@@ -1,0 +1,51 @@
+right click with bow:
+    set {P::%player's uuid%::Bow} to now
+left click with bow:
+    {P::%player's uuid%::Bow_} is not set
+    set {P::%player's uuid%::Bow_} to 1
+    set {P::%player's uuid%::Bow} to now
+    shoot arrow from player at speed 3
+    set metadata "shooter" of last spawned arrow to "%player%"
+    wait 20 ticks
+    delete {P::%player's uuid%::Bow_}
+projectile hit:
+    set {_p} to shooter
+    set {_u} to {_p}'s uuid
+    if metadata "ju" of event-projectile is set:
+        set {_l} to event-projectile's location
+        # 弓師スキル「強い矢」
+        #{P::%{_u}%::Job} is "archer":
+        # morkazsk activate 3 of particle "VILLAGER_ANGRY":0 offset by 1, 1, 1 at {_l}
+        # morkazsk activate 20 of particle "CLOUD":0 offset by 1, 1, 1 at {_l}
+        make 3 of angry_villager at {_l} with offset v(1, 1, 1) with extra 0
+        make 20 of cloud at {_l} with offset v(1, 1, 1) with extra 0
+        #loop all entities in radius 5 around {_l} where [isMonster(input) is true]:
+            #magicDamage({_p}, loop-entity)
+        Sound1({_l}, "entity.bat.hurt")
+    delete event-projectile
+
+load:
+    set {MugenArrow} to 64 of arrow of Curse of Binding 1 with all flags hidden named "&e無限の矢筒"
+
+join:
+    delete {P::%player's uuid%::Bow_}
+    set slot 37 of player's inventory to {MugenArrow}
+load:
+    loop all players:
+        set slot 37 of loop-player's inventory to {MugenArrow}
+
+shoot:
+    set slot 37 of shooter's inventory to {MugenArrow}
+    projectile is arrow
+    set {_p} to shooter
+    set {_u} to {_p}'s uuid
+    set {_D} to difference between {P::%{_u}%::Bow} and now
+    delete {P::%{_u}%::Bow}
+    #if {_D} is greater than 1 second:
+    #{P::%{_u}%::Job} is "archer":
+    #skillCheck({_p}, "archer_1", 10, 5, true, "つよい矢") is true
+    set metadata "ju" of projectile to 1
+    loop 50 times:
+        # morkazsk activate 1 of particle "FLAME":0 offset by 0, 0, 0 at projectile
+        make 1 of flame at projectile with offset v(0, 0, 0) with extra 0
+        wait a tick

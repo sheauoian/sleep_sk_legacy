@@ -1,0 +1,17 @@
+function back(p: player):
+    set {_u} to {_p}'s uuid
+    {P::%{_u}%::BackCT} is set:
+        {P::%{_u}%::BackCT} was less than 10 ticks ago
+        set {P::%{_u}%::BackCT} to now
+        stop
+    set {P::%{_u}%::BackCT} to now
+    teleport {_p} to {P::%{_u}%::GroundPos}
+damage:
+    victim is a player
+    victim's y-loc < -20
+    cancel event
+    set fall height of victim to 0
+    back(victim)
+every 5 seconds:
+    loop all players where [input is on ground]:
+        set {P::%loop-player's uuid%::GroundPos} to loop-player's location

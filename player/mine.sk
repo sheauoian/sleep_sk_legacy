@@ -1,0 +1,131 @@
+
+
+load:
+    set {MscoreP::*} to "&7&lCOMMON", "&a&lUNCOMMON", "&b&lRARE", "&9&lSUPERRARE", "&5&lEPIC" and "&6&lLEGENDARY"
+
+
+break:
+    player's gamemode is adventure
+    cancel event
+    add 1 to {P::%player's uuid%::Mine}
+    "%type of event-block%" contains "ore":
+        set {_id::*} to split "%type of event-block%" at " "
+        anniOre(player, location of event-block, {_id::1})
+    else:
+        set {_id} to raw name of event-block
+        replace all "minecraft:" with "" in {_id}
+        if {Material::%{_id}%} is set:
+            give player getMaterialItem(player, {_id}, 1)
+        blockBreak(event-block, 30 seconds, air)
+function anniOre(p: player, l: location, id: text):
+    set {_u} to {_p}'s uuid
+    if {P::%{_u}%::Job} is "miner":
+        set {_r} to a random integer between 1 to max(1+{PJob::%{_u}%::Miner}, 5)
+    else:
+        set {_r} to 1
+    set {_i} to {_r} of getMaterialItem({_p}, {_id}, 1)
+    giveItem({_p}, {_i}, 1)
+    set {_fl} to formedXYZ({_l})
+    blockBreak(block at {_l}, 30 seconds, cobblestone)
+
+function blockBreak(b: block, t: timespan, type: itemtype = air):
+    set {_l} to location of {_b}
+    set {FixBlocks::%{_l}%} to {_l}
+    set {_bf} to type of {_b}
+    set {FixBlocks::%{_l}%::B} to "%{_bf}%:%data of {_bf}%"
+    set block at {_l} to {_type}
+    wait {_t}
+    set block at {_l} to {_bf}
+    delete {FixBlocks::%{_l}%}
+    delete {FixBlocks::%{_l}%::B}
+skript load:
+    wait 10 seconds
+    loop {FixBlocks::*}:
+        set {_b::*} to split {FixBlocks::%loop-index%::B} at ":"
+        delete {FixBlocks::%loop-index%::B}
+        set {_b} to {_b::1} parsed as a itemtype
+        #set data of {_b} to {_b::2} parsed as a int
+        set block at loop-value to {_b}
+    delete {FixBlocks::*}
+
+
+
+
+
+every a second:
+    loop {AnOres::*}:
+        set {_fl} to loop-index
+        remove 1 from {AnOres::%{_fl}%::sec}
+        if {AnOres::%{_fl}%::sec} <= 0:
+            set {_id} to {AnOres::%{_fl}%} 
+            set block at {AnOres::%{_fl}%::l} to {AnniC::Ores::%{_id}%}
+            delete {AnOres::%{_fl}%::*}
+            delete {AnOres::%{_fl}%}
+command /getnbt:
+    permission: op
+    trigger:
+        send "%nbt of player's tool%"
+
+command /candestroy:
+    trigger:
+        set {_a::*} to tag "CanDestroy" of nbt of player's tool
+        set {_} to 0
+        create gui with virtual chest with 4 rows named "こわせるぶろっく":
+            make gui slot (integers from 0 to 35) with gray stained glass pane named "&7"
+            loop {_a::*}:
+                set {_a} to loop-value
+                replace all "minecraft:" with "" in {_a}
+                replace all "_" with " " in {_a} 
+                set {_i} to {_a} parsed as itemtype
+                make gui slot {_} with {_i}
+                add 1 to {_}
+        open last created gui to player
+
+right click:
+    raw name of player's tool contains "pickaxe"
+    event-block is set
+    event-block is not air, iron block or chest
+    item cooldown of player's tool for player = 0 seconds
+    set item cooldown of player's tool for player to 0.25 second
+    set {_l} to player's location
+    set {_} to raw name of event-block
+    set {_a::*} to string list tag "CanDestroy" of nbt of player's tool
+    {_a::*} contains {_}:
+        remove {_} from {_a::*}
+        make 3 of angry_villager at {_l} with offset v(1, 1, 1) with extra 0
+        Sound1({_l}, "entity.bat.hurt", 1.4)
+    else:
+        add {_} to {_a::*}
+        make 3 of happy_villager at {_l} with offset v(1, 1, 1) with extra 0
+        Sound1({_l}, "entity.experience_orb.pickup", 1.3)
+        Sound1({_l}, "block.amethyst_block.chime", 1.2)
+    amount of {_a::*} is 0:
+        delete string list tag "CanDestroy" of nbt of player's tool
+    else:
+        set string list tag "CanDestroy" of nbt of player's tool to {_a::*}
+command /addCandestroy <text>:
+    trigger:
+        set {_a::*} to tag "CanDestroy" of nbt of player's tool
+        add "minecraft:%arg%" to {_a::*}
+        set tag "CanDestroy" of nbt of player's tool to {_a::*}
+command /removeCandestroy <text>:
+    trigger:
+        set {_a::*} to tag "CanDestroy" of nbt of player's tool
+        remove "minecraft:%arg%" from {_a::*}
+        set tag "CanDestroy" of nbt of player's tool to {_a::*}
+
+function definePickaxe(id: text, i: item, n: text, luck: number, b: texts):
+    loop {_b::*}:
+        add 1 to {_am}
+    set {_t} to "{CanDestroy:["
+    loop {_b::*}:
+        add 1 to {_am_}
+        set {_t} to "%{_t}%""minecraft:%loop-value%"""
+        if {_am_} is {_am}:
+            set {_t} to "%{_t}%]}"
+        else:
+            set {_t} to "%{_t}%,"
+    add {_t} to nbt of {_i}
+    set {_i} to {_i} named {_n}
+    set {pickaxes::%{_id}%} to {_i} named {_n}
+    set {pickaxes::%{_id}%} to {pickaxes::%{_id}%} named {_n}

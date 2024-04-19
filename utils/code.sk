@@ -1,0 +1,166 @@
+command /skcode <player> <text>:
+    permission: op
+    trigger:
+        skCode(arg-1, arg-2)
+function skCode(p: player, tt: text) :: int:
+    if {_tt} is "(+NBT)":
+        return -404
+    set {_return} to 1
+    set {_u} to {_p}'s uuid
+    set {_Codes::*} to split {_tt} at "|"
+    loop {_Codes::*}:
+        set {_t} to loop-value
+        Debug({_p}, "&7- %{_t}%")
+        set {_Arg::*} to split {_t} at "\"
+        if {_Arg::1} is "tp":
+            teleport {_p} to {Loc::%{_Arg::2}%}
+
+        else if {_Arg::1} is "setblock":
+            set block at {Loc::%{_Arg::2}%} to {_Arg::3} parsed as item
+
+        else if {_Arg::1} is "spawnpoint":
+            set {P::%{_u}%::SpawnPoint} to {Point::%{_Arg::2}%::Loc}
+        
+        else if {_Arg::1} is "chattarget":
+            set {Chat::%{_Arg::2}%::Missiontarget} to {_p}
+            set {Chat::%{_Arg::2}%::MissionNow} to now
+        
+        else if {_Arg::1} is "chattargetset":
+            delete {Chat::%{_id}%::MissionNow}
+            
+        else if {_Arg::1} is "command" or "cmd":
+            set {_cmd} to {_Arg::2}
+            replace all "@p" with "%{_p}%" in {_cmd}
+            Debug({_p}, {_cmd})
+            execute console command {_cmd}
+            
+
+        else if {_Arg::1} is "if":
+            if {_Arg::2} is "arg":
+                set {_ID} to {_Arg::3}
+                if {_Arg::4} is not set:
+                    set {_Arg::4} to ""
+                if {_Arg::4} is "":
+                    if {P::%{_u}%::SkArg.%{_ID}%} is set:
+                        {P::%{_u}%::SkArg.%{_ID}%} is not ""
+                        set {_return} to 2
+                        exit a loop
+                else:
+                    {P::%{_u}%::SkArg.%{_ID}%} is not {_Arg::4}
+                    set {_return} to 2
+                    exit a loop
+            else if {_Arg::2} is "tag":
+                if {_Arg::3} starts with "-":
+                    replace all "-" with "" in {_Arg::3}
+                    loop scoreboard tags of {_p}:
+                        loop-value-2 is {_Arg::3}
+                        set {_return} to 2
+                        exit all loops
+                else:
+                    set {_return} to 2
+                    loop scoreboard tags of {_p}:
+                        loop-value-2 is {_Arg::3}
+                        set {_return} to 1
+                        exit a loop
+                    {_return} is 2
+                    exit all loops
+            else if {_Arg::2} is "roadmap":
+                if {_Arg::5} is "global":
+                    {RoadMap::%{_Arg::3}%::%{_Arg::4}%::GlobalComp} is not 1
+                    set {_return} to 2
+                    exit a loop
+                else:
+                    {P::%{_u}%::RMap::%{_Arg::3}%::%{_Arg::4}%} is not 1
+                    set {_return} to 2
+                    exit a loop
+            else if {_Arg::2} is "chattarget":
+                if {Chat::%{_Arg::3}%::Missiontarget} is not set:
+                    set {_return} to 2
+                    exit a loop
+                else if {_Arg::4} is "isplayer":
+                    {Chat::%{_Arg::3}%::Missiontarget} is not {_p}
+                    set {_return} to 2
+                    exit a loop
+        else if {_Arg::1} is "npctrade":
+            set {_id} to {_Arg::2}
+            if {_p} has {NpcTrade::%{_id}%}:
+                remove {NpcTrade::%{_id}%} from {_p}
+                add {NpcTrade::%{_id}%::Pay} to {P::%{_u}%::Money}
+                Sound2({_p}, "entity.experience_orb.pickup", 2)
+                exit a loop
+            set {_return} to 2
+            exit a loop
+
+        else if {_Arg::1} is "roadmap":
+            if {_Arg::2} is "complete":
+                completeRoadMap({_p}, {_Arg::3}, {_Arg::4})
+            else if {_Arg::2} is "unlock":
+                if {P::%{_u}%::UnlockedMap::%{_Arg::3}%} is true:
+                    send "&7» このロードマップは既にアンロックされています!" to {_p}
+                else:
+                    set {P::%{_u}%::UnlockedMap::%{_Arg::3}%} to true
+                    set {_t} to {RoadMap::%{_Arg::3}%}
+                    replace all "&8" with "&7" in {_t}
+                    send "&7» &fロードマップ %{_t}% &fが&l解禁ッされ!た!!!" to {_p}
+                set {_comp} to text component of "« クリックで確認 »"
+                set click event of {_comp} to click event to run command "/roadmap %{_Arg::3}%"
+                set hover event of {_comp} to hover event showing "&e▶ Click"
+                set underlined format of {_comp} to true
+                set color format of {_comp} to yellow
+                send component {_comp} and {_f} to {_p}
+            else if {_Arg::2} is "unlockid":
+                unlockRoadMapID({_p}, {_Arg::3}, {_Arg::4})
+            else if {_Arg::2} is "lock":
+                set {P::%{_u}%::UnlockedMap::%{_Arg::3}%} to false
+        else if {_Arg::1} is "kaitu":
+            "%{_p}'s scoreboard tags%" doesn't contain {_Arg::2}
+            add {_Arg::2} to {_p}'s scoreboard tags
+            send "&7*どこかの道が開通したようだ…" to {_p}
+        else if {_Arg::1} is "give":
+            loop {SkItem::%{_Arg::2}%::*}:
+                giveItem({_p}, {SkItem::%{_Arg::2}%::*}, 1)
+        
+        else if {_Arg::1} is "tag":
+            if {_Arg::2} starts with "-":
+                set {_a::*} to split {_Arg::2} at "-"
+                remove {_a::2} from scoreboard tags of {_p}
+            else:
+                add {_Arg::2} to scoreboard tags of {_p}
+
+        else if {_Arg::1} is "send":
+            send colored {_Arg::2} to {_p}
+        
+        else if {_Arg::1} is "wait":
+            set {_span} to {_Arg::2} parsed as timespan
+            wait {_span}
+        
+        else if {_Arg::1} is "title":
+            set {_Tit::*} to {_Arg::2} split at "[["
+
+            if {_Arg::5} is set:
+                set {_for} to {_Arg::3} parsed as timespan
+                set {_in} to {_Arg::4} parsed as timespan
+                set {_out} to {_Arg::5} parsed as timespan
+            else:
+                set {_for} to 5 seconds
+                set {_in} to 1 second
+                set {_out} to 1 second
+            send title {_Tit::1} with subtitle {_Tit::2} to {_p} for {_for} with fade in {_in} and fade out {_out}
+    if {P::%{_u}%::sidebar} is "arg":
+        sidebar({_p})
+    Debug({_p}, "SkCode: %size of {_Codes::*}% lines executed: Return %{_return}%")
+    return {_return}
+
+command /tag <text> [<player>]:
+    permission: op
+    trigger:
+        set {_p} to arg-2 ? player
+        if arg-1 is "list":
+            send "%{_p}%'s Tag: %{_p}'s scoreboard tags%"
+        else if arg-1 starts with "-":
+            set {_a::*} to split arg-1 at ""
+            delete {_a::1}
+            set {_tag} to join {_a::*} with ""
+            remove {_tag} from {_p}'s scoreboard tags
+        else:
+            add arg-1 to {_p}'s scoreboard tags

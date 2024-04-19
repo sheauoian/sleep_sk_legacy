@@ -1,0 +1,41 @@
+load:
+    constMoney(0, "dollar", "&eゴールド", gold ingot)
+    constMoney(1, "essence", "&aエッセンス", slime ball)
+    constMoney(2, "crystal", "&bクリスタル", diamond)
+
+
+function moneySidebar(p: player):
+    set {_u} to {_p}'s uuid
+    set line 2 of {_p}'s scoreboard to "&7  &eゴールド&f: %{P::%{_u}%::Dollar}%"
+    set line 1 of {_p}'s scoreboard to "&7  &aエッセンス&f: %{P::%{_u}%::Essence}%"
+
+function constMoney(n: int, id: text, name: text, icon: item):
+    set {Money::%{_n}%} to {_id}
+    set {MnNum::%{_id}%} to {_n}
+    set {Money::%{_n}%::Name} to {_name}
+    set {Money::%{_n}%::Icon} to {_icon}
+
+command /setmoney <player> <text> <int>:
+    permission: op
+    trigger:
+        set {_p} to arg-1 ? player
+        set {_u} to {_p}'s uuid
+        set {P::%{_u}%::%arg-2%} to arg-3
+
+tab complete of "/setmoney":
+    set tab completions for position 2 to {Money::*}
+
+command /money [<player>]:
+    trigger:
+        set {_p} to arg ? player
+        set {_u} to {_p}'s uuid
+        send "%{_p}% の所持金: %{P::%{_u}%::dollar}%"
+
+command /moneydata [<player>]:
+    permission: op
+    trigger:
+        set {_p} to arg ? player
+        set {_u} to {_p}'s uuid
+        loop {Money::*}:
+            set {_n} to loop-index
+            send "%{Money::%{_n}%::Name}% &f: %{P::%{_u}%::%loop-value%}%"

@@ -1,0 +1,77 @@
+# オプション
+options:
+    gui: "武器・装備の設定"
+    guilvlup: "武器・装備の強化"
+    sub: "&7 [ サブステータス枠 ]"
+
+command /setweapon:
+    trigger:
+        weaponSetting(player)
+function weaponSettingSlot(p: player, type: text, s: int):
+    set {_u} to {_p}'s uuid
+    set {_gui} to gui "setweapon.%{_p}%"
+    edit gui {_gui}:
+        if {Pw::%{_u}%::%{_type}%} is not set:
+            if {_type} contains "weapon":
+                set {_i} to iron bar named "&7[ &f武器&7 ]"
+            else:
+                set {_i} to iron bar named "&7[ &f%{WType::%{_type}%}%&7 ]"
+        else:
+            set {_i} to {Pw::%{_u}%::%{_type}%}
+        make gui slot {_s} with {_i}:
+            click type is drop key:
+                {Pw::%{_u}%::%{_type}%} is set
+                set {_} to floor(max(1, ({_s}-17)))
+                delete {Pw::%{_u}%::%{_type}%}
+                setPlayerDB({_p}, {_}, air)
+                updatePlayerStatus({_p})
+                weaponSettingSlot({_p}, {_type}, {_s})
+            else:
+                setWeaponFromArsenal({_p}, {_type})
+function weaponSetting(p: player):
+    set {_u} to {_p}'s uuid
+    create a gui "setweapon.%{_p}%" with virtual chest with 4 row named {@gui}:
+        make gui slot (integers between 0 to 35) with gray stained glass pane named "&a"
+        weaponSettingSlot({_p}, "weapon", 10)
+        weaponSettingSlot({_p}, "helmet", 19)
+        weaponSettingSlot({_p}, "chestplate", 20)
+        weaponSettingSlot({_p}, "leggings", 21)
+        weaponSettingSlot({_p}, "boots", 22)
+        make gui slot 34 with anvil named "&f» 武器/防具強化 &7[/lvup]":
+            execute player command "/lvup"
+        make gui slot 35 with barrier named "&cメインメニューに戻る":
+            open gui "main" to player
+    open gui "setweapon.%{_p}%" to {_p}
+function setWeaponFromArsenal(p: player, type: text, page: int = 1):
+    set {_u} to {_p}'s uuid
+    checkArsenal({_p}, {_type})
+    
+    set {_size} to {ArsenalType::%{_type}%::size}
+    set {_maxpage} to ceil({_size}/45)
+    set {_title} to "&l« %{ArsenalType::%{_type}%}%設定 »  &8[ %{_page}% / %{_maxpage}% ]"
+    set {_l::*} to values in yaml list "items" from "%{_p}%.arsenal.%{_type}%"
+    set {_s} to 0
+    create a gui with virtual chest with 6 rows named {_title}:
+        make gui slot (integers between 0 to 53) with gray stained glass pane
+        set {_index} to ({_page}-1)*45
+        loop 45 times:
+            add 1 to {_index}
+            if {_l::%{_index}%} is set:
+                make gui slot {_s} with {_l::%{_index}%}:
+                    set {Pw::%{_u}%::%{_type}%} to {_l::%{_index}%}
+                    updatePlayerStatus(player)
+                    weaponSetting(player)
+                add 1 to {_s}
+            else:
+                exit a loop
+        if {_page} > 1:
+            make gui slot 45 with paper named "前のページ":
+                remove 1 from {_page}
+                setWeaponFromArsenal(player, {_type}, {_page})
+        if {_page} < {_maxpage}:
+            make gui slot 53 with paper named "次のページ":
+                add 1 to {_page}
+                setWeaponFromArsenal(player, {_type}, {_page})
+        make gui slot 49 with barrier named "戻る":
+            open gui "setweapon.%{_p}%" to player
+    open last created gui to {_p}

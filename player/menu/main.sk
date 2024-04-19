@@ -1,0 +1,26 @@
+function createMainMenu():
+    create gui "main" with virtual chest with 6 rows named "&8   « &lメインメニュー &8»":
+        make gui slot (integers from 0 to 53) with gray stained glass pane named "&7"
+        # ショートカットキー
+        make gui slot 11 with chest named "&f» ショップ &7[/shop]":
+            execute player command "/shop"
+        make gui slot 13 with ender pearl named "&f» ワープ &7[/warp]":
+            execute player command "/warp"
+        make gui slot 15 with filled map with all flags hidden named "&f» ロードマップ &7[/roadmap]":
+            execute player command "/roadmap"
+        make gui slot 19 with rotten flesh named "&f» ドロップアイテムの解体 &7[/sell]":
+            execute player command "/sell"
+        make gui slot 21 with iron block named "&f» 職業・キャラクター設定 &7[/job]":
+            execute player command "/job"
+        make gui slot 23 with diamond chestplate named "&f» ステータス・武器/防具設定 &7[/status, /setweapon]":
+            execute player command "/status"
+        make gui slot 25 with anvil named "&f» 武器/防具強化 &7[/lvup]":
+            execute player command "/lvup"
+        make gui slot 53 with glass named "&f» 頬をつねる":
+            "%player's world%" is "world"
+            teleport player to {Loc::Tutorial}
+command /menu:
+    trigger:
+        gui "main" doesn't exist:
+            createMainMenu()
+        open gui "main" to player

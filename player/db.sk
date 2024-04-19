@@ -1,0 +1,61 @@
+options:
+    yml: "%{_p}%"
+
+
+function setStatus(p: player, key: text, val: object):
+    set yaml value "status.%{_key}%" from {@yml} to {_val}
+
+function checkDB(p: player):
+    set {_u} to {_p}'s uuid
+    yml {@yml} isn't loaded:
+        load yml "db/players/%{_u}%/info.yml" as {@yml}
+    loop "weapon", "helmet", "chestplate", "leggings" and "boots":
+        set {_i} to yaml value "status.equipment.%loop-value%" from {@yml}
+        {_i} is not air:
+            set {Pw::%{_u}%::%loop-value%} to {_i}
+        add 1 to {_}
+    loop {Stat::*}:
+        set {PStat::%{_u}%::%loop-value%} to yaml value "status.%loop-value%" from {@yml}
+join:
+    checkDB(player)
+quit:
+    delete {Pw::%player's uuid%::*}
+    delete {PStat::%player's uuid%::*}
+    set {_p} to player
+    save yml {@yml}
+    unload yml {@yml}
+load:
+    loop all players:
+        set {_p} to loop-player
+        yml {@yml} is loaded
+        save yml {@yml}
+        checkDB({_p})
+
+
+# ----- statics -----
+
+
+skript stop:
+    loop currently loaded yaml files:
+        save yml loop-value
+
+load:
+    loop indices of {YML::*}:
+        save yml loop-value
+    delete {YML::*}
+    defineYML("loc", "locations")
+    defineYML("proj", "projectiles")
+
+function defineYML(id: text, path: text):
+    set {_path} to "db/statics/%{_path}%"
+    set {YML::%{_id}%} to {_path}
+    load yml {_path} as {_id}
+
+function setYML(id: text, node: text, val: object):
+    set yml value {_node} from {_id} to {_val}
+function setYMLList(id: text, node: text, val: objects):
+    set yml list {_node} from {_id} to {_val::*}
+function getYML(id: text, node: text) :: object:
+    return yml value {_node} from {_id}
+function getYMLList(id: text, node: text) :: objects:
+    return yml list {_node} from {_id}

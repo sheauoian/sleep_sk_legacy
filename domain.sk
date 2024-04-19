@@ -1,0 +1,131 @@
+command /domain [<text>] [<text>] [<text>]:
+    permission: map
+    trigger:
+        set {_} to arg-1
+        set {_id} to arg-2
+        if {_} is "list":
+            loop {Dung::*}:
+                send "%loop-index% %loop-value%"
+        if {_} is "create":
+            set {Dung::%{_id}%} to "&f%{_id}%"
+            send "ドメイン[&e%{_id}%] が作成されました"
+        else if {_} is "name":
+            set {Dung::%{_id}%} to "&f%colored arg-3%"
+            send "ドメイン[&e%{_id}%] の名前が %{Dung::%{_id}%}% &fに設定されました"
+        else if {_} is "time":
+            set {Dung::%{_id}%::Limit} to arg-3 parsed as a int
+            parse error is not set
+            send "ドメイン[&c%{_id}%] の制限時間が %arg-3%秒 に設定されました"
+        else if {_} is "open":
+            Domain(player, {_id})
+        else if {_} is "spawn":
+            if arg-3 is set:
+                set {Dung::%{_id}%::Spawn} to "loc;%arg-3%"
+            else:
+                set {Dung::%{_id}%::Spawn} to player's location
+        else if {_} is "enter":
+            set {Dung::%{_id}%::Enter} to player's location
+            send "設定しました"
+            setDomainEntrance({_id})
+        
+function setDomainEntrance(id: text):
+    {Dung::%{_id}%::Enter} is set
+    {Domainstand::%{_id}%} is set:
+        delete holo {Domainstand::%{_id}%}
+    set {_Line::*} to "&7 - &6&lダンジョン入口 &7-", "&7%{_id}% | &f%{Dung::%{_id}%}%" and "クリックで入る"
+    create a new hologram with line {_Line::*} at {Dung::%{_id}%::Enter}~v(0, 2, 0) and store in {Domainstand::%{_id}%}
+    make all lines of {Domainstand::%{_id}%} clickable
+function resetAllDomainEntrances():
+    loop {Dung::*}:
+        setDomainEntrance(loop-index)
+skript load:
+    resetAllDomainEntrances()
+command /resetdomain:
+    permission: op
+    trigger:
+        resetAllDomainEntrances()
+on hologram click:
+    {Domainstand::*} contains event-hologram
+    set {_L::*} to split uncolored line 2 of event-hologram at " | "
+    set {_id} to {_L::1}
+    Domain(player, {_id})
+
+
+function stopDomain(id: text):
+    loop {Dung::%{_id}%::Player::*}:
+        quitDomain(loop-value)
+    delete {Dung::%{_id}%::Player::*}
+    #fixDomain({_id})
+death:
+    victim is a player
+    {P::%victim's uuid%::Dung} is set
+    force victim to respawn
+    wait a tick
+    quitDomain(victim)
+function quitDomain(p: offline player):
+    set {_u} to {_p}'s uuid
+    set {_id} to {P::%{_u}%::Dung}
+    teleport {_p} to {Dung::%{_id}%::Enter}
+    delete {P::%{_u}%::Dung}
+    remove {_p} from {Dung::%{_id}%::Player::*}
+    amount of {Dung::%{_id}%::Player::*} <= 0
+    stopDomain({P::%{_u}%::Dung})
+every a second:
+    loop {Dung::*}:
+        set {_ID} to loop-index
+        {Dung::%{_id}%::Player::*} is set
+        remove 1 from {Dung::%{_id}%::Time}
+        if {Dung::%{_id}%::Time} <= 0:
+            stopDomain({_id})
+function checkDomain(id: text) :: boolean:
+    loop {Dung::%{_id}%::Player::*}:
+        "%all players%" contains "%loop-value%"
+        set {_a} to 1
+        exit a loop
+    {_a} is not 1:
+        return false
+    return true
+
+
+function enterDomain(p: player, id: text):
+    set {_u} to {_p}'s uuid
+    remove {_p}'s scoreboard tags where [input contains "domain:"] from {_p}'s scoreboard tags
+    delete {Dung::%{_id}%::Player}
+    add {_p} to {Dung::%{_id}%::Player::*}
+    set {Dung::%{_id}%::Time} to {Dung::%{_id}%::Limit} ? 600
+    set {P::%{_u}%::Dung} to {_id}
+    if {Dung::%{_id}%::Spawn} contains "loc;":
+        set {_Loc::*} to split {Dung::%{_id}%::Spawn} at ";"
+        teleport {_p} to {Loc::%{_Loc::2}%}
+    else:
+        teleport {_p} to {Dung::%{_id}%::Spawn}
+
+function Domain(p: player, id: text, a: text = ""):
+    set {_u} to {_p}'s uuid
+    if {_a} is "":
+        set {_} to checkDomain({_id})
+        {_} is false:
+            stopDomain({_id})
+        create gui "domain.%{_id}%" with virtual chest with 3 rows named "&lダンジョンに入る &0[ %{_id}% ]":
+            make gui slot (integers from 0 to 53) with gray stained glass pane named "&7"
+        open gui "domain.%{_id}%" to {_p}
+        while name of {_p}'s current inventory is "&lダンジョンに入る &0[ %{_id}% ]":
+            edit gui "domain.%{_id}%":
+                if {Dung::%{_id}%::Player::*} is set:
+                    set {_l::*} to "&7» &f残り時間: &b%{Dung::%{_id}%::Time}%秒"
+                    set {_I} to red concrete named "&7» &c入場しているプレイヤーがいます。" with lore {_l::*}
+                    make gui slot 25 with {_I}:
+                        send "プレイしてるプレイヤーがいるらしいぞ" to {_p}
+                else:
+                    make gui slot 25 with lime concrete named "&7» &a参加する":
+                        enterDomain({_p}, {_id})
+            wait a second
+
+
+command /quitdungeon:
+    trigger:
+        set {_u} to player's uuid
+        if {P::%{_u}%::Dung} is not set:
+            send "&7» &f現在参加していません!"
+            stop
+        quitDomain(player)

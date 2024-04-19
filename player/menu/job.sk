@@ -1,0 +1,58 @@
+command /job:
+    trigger:
+        CharacterGUI(player)
+function CharacterGUI(p: player, id_: text = ";"):
+    set {_u} to {_p}'s uuid
+    if {_ID_} is ";":
+        create a gui with virtual chest with 2 row named "キャラクターの設定":
+            make gui slot (integers between 0 to 17) with gray stained glass pane
+            make gui slot 2 with iron block named "&7» &fプレイヤーの職業一覧":
+                CharacterGUI({_p}, ";job")
+            make gui slot 6 with gold block named "&7» &fキャラクターの一覧":
+                CharacterGUI({_p}, ";chara")
+            make gui slot 13 with barrier named "&7» &fメニューに戻る":
+                execute {_p} command "/menu"
+    else if {_ID_} is ";job":
+        create a gui with virtual chest with 4 rows named "職業を選択してください":
+            make gui slot (integers between 0 to 35) with gray stained glass pane named "&0"
+            loop {Job::*}:
+                set {_ID} to loop-index
+                {PJob::%{_u}%::%{_ID}%} >= 1
+                add 1 to {_S}
+                set {_I} to {Job::%{_ID}%::Item} named "&7» &f%{Job::%{_ID}%}%" with lore "&7Qボタンで職業を切り替える"     
+                make gui slot ({_S}-1) with {_I}:
+                    if click type is drop key:
+                        set {P::%{_u}%::Job} to {_ID}
+                        Sound2({_p}, "block.lever.click")
+                        updatePlayerStatus({_p})
+                    else:
+                        CharacterGUI({_p}, "job;%{_id}%")
+            make gui slot 35 with barrier named "&f» &f前の画面に戻る":
+                CharacterGUI({_p})
+    else if {_ID_} is ";chara":
+        create a gui with virtual chest with 4 rows named "キャラクターを選択してください":
+            make gui slot (integers between 0 to 35) with gray stained glass pane named "&7"
+            loop {PChara::%{_u}%::*}:
+                set {_ID} to loop-index
+                add 1 to {_S}
+                set {_I} to {Chara::%{_ID}%::Item} named "&7» &f%{Chara::%{_ID}%}%"     
+                make gui slot ({_S}-1) with {_I}:
+                    CharacterGUI({_p}, "character;%{_id}%")
+            make gui slot 35 with barrier named "&f» &f前の画面に戻る":
+                CharacterGUI({_p})
+    else if {_ID_} contains "job;":
+        set {_ID} to {_ID_}
+        replace all "job;" with "" in {_ID}
+        create a gui with virtual chest with 4 rows named "職業 -%{Job::%{_ID}%}%-":
+            make gui slot (integers between 0 to 35) with gray stained glass pane named "&7"
+            set {_T} to 1
+            loop 5 times:
+                ({PJob::%{_u}%::%{_ID}%} -1) >= {_T}:
+                    set {_I} to {Job::%{_ID}%::Item}
+                else:
+                    set {_I} to bedrock
+                make gui slot ({_T}+19) with {_I} named "&f [ ∅%{_T}% ]" with lore {JobTotu::%{_ID}%::%{_T}%::*}
+                add 1 to {_T}
+            make gui slot 35 with barrier named "&f» &f前の画面に戻る":
+                CharacterGUI({_p}, ";job")
+    open last gui to {_p}

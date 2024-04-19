@@ -1,0 +1,63 @@
+skript load:
+    wait 5 seconds
+    reloadSkHolo()
+    wait 5 ticks
+    resetAllWarpPoints()
+
+command /resetwarp:
+    permission: op
+    trigger:
+        resetAllWarpPoints()
+
+command /skholo [<text>]:
+    permission: builder
+    trigger:
+        if arg is "reload":
+            reloadSkHolo()
+            stop
+        set {_fl} to formedXYZ(location of block at player's location)
+        {SkHoloL::%{_fl}%} is set:
+            delete holo {SkHoloL::%{_fl}%}
+        if arg is not set:
+            {SkHolo::%{_fl}%} is set
+            delete {SkHolo::%{_fl}%}
+            send "SkHoloを削除しました"
+        else:
+            set {SkHolo::%{_fl}%} to colored arg
+            set {SkHolo::%{_fl}%::Loc} to location of block at player's location ~ v(0, 0.2, 0)
+            create a new hologram with line (split {SkHolo::%{_fl}%} at "||") at {SkHolo::%{_fl}%::Loc} and store in {SkHoloL::%{_fl}%}
+function reloadSkHolo():
+    loop {SkHolo::*}:
+        wait a tick
+        set {_fl} to loop-index
+        {SkHoloL::%{_fl}%} is set:
+            delete holo {SkHoloL::%{_fl}%}
+        create a new hologram with line (split loop-value at "||") at {SkHolo::%{_fl}%::Loc} and store in {SkHoloL::%{_fl}%}
+
+command /reloadholo:
+    permission: op
+    trigger:
+        reloadSkHolo()
+
+# ワープポイントのホログラムを設置
+function setWarpPoint(id: text):
+    {Wpoint::%{_id}%} is true
+    {Warpstand::%{_id}%} is set:
+        delete holo {Warpstand::%{_id}%}
+    create a new hologram with line ("&7 - &3&lワープポイント &7-", "&7%{_id}% | &f%{Loc::%{_id}%::Name}%" and "クリックで解放") at {Loc::%{_id}%}~v(0, 2, 0) and store in {Warpstand::%{_id}%}
+    make all lines of {Warpstand::%{_id}%} clickable
+function resetAllWarpPoints():
+    loop {Wpoint::*}:
+        setWarpPoint(loop-index)
+        wait a tick
+
+on hologram click:
+    {Warpstand::*} contains event-hologram
+    set {_L::*} to split uncolored line 2 of event-hologram at " | "
+    set {_id} to {_L::1}
+    {PWarp::%player's uuid%::*} doesn't contain {_id}:
+        add {_id} to {PWarp::%player's uuid%::*}
+        send "ワープポイント « %{Loc::%{_id}%::Name}% » を開放しました"
+        giveCrystal(player, 15, "ワープ開放")
+    else:
+        send "このワープポイントは既に解放済みです"

@@ -1,0 +1,19 @@
+eat:
+    set {_u} to player's uuid
+    loop lore of event-item:
+        set {_} to uncolored loop-value
+        {_} starts with "- "
+        set {_a::*} to {_} parsed as "- %text% %number%"
+        if {_a::1} is "HP回復":
+            set {P::%{_u}%::hp} to min({Pstat::%{_u}%::Hp}, {P::%{_u}%::hp} + {_a::2}*max(1, {Pstat::%{_u}%::HealBoost}))
+            Sound2(player, "entity.experience_orb.pickup", 0.7)
+        else if {_a::1} is "満腹度減少":
+            remove {_a::2} from player's food level
+            Sound2(player, "entity.generic.extinguish_fire", 0.7)
+on consume of potion:
+    wait a tick
+    remove all bottle from player
+command /foodlevel <int>:
+    permission: op
+    trigger:
+        set player's food level to arg

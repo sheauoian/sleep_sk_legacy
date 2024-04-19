@@ -1,0 +1,22 @@
+function roadMapTutorialReload():
+    set {_ct} to "tutorial"
+    loop {RoadMap::%{_ct}%::*}:
+        delete {RoadMap::%{_ct}%::%loop-index%::*}
+    delete {RMapLoc::%{_ct}%::*}
+    set {RoadMap::%{_ct}%} to "&8- &lT&8utoria&ll &8-"
+    # ((RoadMapID, AchievementID, Name), (タテ,ヨコ,報酬金額,表記設定,難易度), アイコンのアイテム, (説明文), (説明文2), (SkCode), 鍵座標設定)
+
+    set {_T::*} to "cucumber", "きゅう・キューカン・カンキューカンバー"
+    set {_N::*} to 2, 3, 300, 1, 1
+    set {_lore::*} to "&7&oきゅうりの呪いで殺される"
+    cnstRoadmap(({_ct}, {_T::*}), ({_N::*}), cactus, {_lore::*}, (""), (""), "q")
+
+    set {_T::*} to "laspapitas", "いや、チップスー"
+    set {_N::*} to 1, 7, 300, 1, 1
+    set {_lore::*} to "&7&oエンシャント・エンチャント研究所に居る" and "&7&oPapitasさんと会話する"
+    cnstRoadmap(({_ct}, {_T::*}), ({_N::*}), potato, {_lore::*}, (""), (""), "")
+
+    set {_T::*} to "tetukaku", "特定非営利活動法人 鉄格子依存症回復支援団体IBRSG"
+    set {_N::*} to 4, 3, 300, 1, 1
+    set {_lore::*} to "&7&o" and "&7&oTetukakuに鉄格子32個を手渡す"
+    cnstRoadmap(({_ct}, {_T::*}), ({_N::*}), iron bars, {_lore::*}, (""), (""), "")

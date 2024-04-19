@@ -1,0 +1,37 @@
+options:
+    maxHeight: 50
+
+jump:
+    set {_p} to player
+    set {_l} to {_p}'s location
+    "%block at {_l}%" contains "iron pressure plate"
+    block at ({_l} ~ vector(0, -0.2, 0)) is iron block
+    loop {@maxHeight} times:
+        add 1 to {_l}'s y-loc
+        "%block at {_l}%" contains "iron pressure plate"
+        block at ({_l} ~ vector(0, -1, 0)) is iron block
+        block at ({_l} ~ vector(0, 1, 0)) is not air:
+            send "&7このエレベーターは一方通行です"
+            stop
+        add 0.1 to {_l}'s y-loc
+        teleport {_p} to {_l}
+        Sound2({_p}, "entity.enderdragon.shoot", 2)
+        stop
+
+sneak toggle:
+    player is not sneaking
+    set {_p} to player
+    set {_l} to {_p}'s location
+    "%block at {_l}%" contains "iron pressure plate"
+    block at ({_l} ~ vector(0, -0.2, 0)) is iron block
+    loop {@maxHeight} times:
+        remove 1 from {_l}'s y-loc
+        "%block at {_l}%" contains "iron pressure plate"
+        block at ({_l} ~ vector(0, -1, 0)) is iron block
+        block at ({_l} ~ vector(0, 1, 0)) is not air:
+            send "&7このエレベーターは一方通行です"
+            stop
+        add 0.1 to {_l}'s y-loc
+        teleport {_p} to {_l}
+        Sound2({_p}, "entity.enderdragon.shoot", 2)
+        stop

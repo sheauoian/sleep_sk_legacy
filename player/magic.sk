@@ -1,0 +1,25 @@
+# スニークでのマナチャージ
+sneak toggle:
+    player is not sneaking
+    set {_u} to player's uuid
+    {P::%{_u}%::Mana} < 100
+    wait a tick
+    while player is sneaking:
+        wait a tick
+        player is on ground
+        add 1 to {_n}
+        {_n} >= 8
+        mod({_n}, 2) = 0
+        add 1 to {P::%{_u}%::Mana}
+        Sound1(player's location, "block.note_block.pling", 0.5, ({P::%{_u}%::Mana}*2/150) + 0.5)
+        set level of player to {P::%{_u}%::Mana}
+        {P::%{_u}%::Mana} >= 100:
+            loop 5 times:
+                Sound1(player's location, "block.wooden_button.click_on", 0.2, 2)
+                wait a tick
+            stop
+command /manaset <int>:
+    permission: op
+    trigger:
+        set {_u} to player's uuid
+        set {P::%{_u}%::Mana} to arg

@@ -1,0 +1,103 @@
+command /loc [<text>] [<text>] [<text>] [<text>]:
+    permission: op
+    trigger:
+        set {_p} to player
+        set {_u} to {_p}'s uuid
+        if arg-1 is "set":
+            if arg-3 is set:
+                if getYML("loc", "%arg-3%.loc") is set:
+                    send "既に存在します! 先に remove で削除してください"
+                    stop
+                if arg-2 is "target":
+                    if {_p}'s target block is air:
+                        send "ブロックは可視ブロックである必要があります"
+                        stop
+                    set {_l} to location of {_p}'s target block
+                else if arg-2 is "player":
+                    set {_l} to location of block at {_p}
+                if arg-4 contains "yawpitch":
+                    set yaw of {_l} to {_p}'s yaw
+                    set pitch of {_l} to {_p}'s pitch
+                setYML("loc", "%arg-3%.loc", {_l})
+                setYML("loc", "%arg-3%.name", arg-3)
+                send "&7設定しました"
+            else:
+                send "&e使い方: &f/loc set (player/target) %%Location ID%% [yawpitch]"
+                send "&7 - yawpitch を入力すると 向いている方角も同時に設定されます"
+        
+        else if arg-1 is "list":
+            loop yml node keys "" in "loc":
+                set {_f} to getYML("loc", "%loop-value%.loc")
+                set {_name} to getYML("loc", "%loop-value%.name")
+                send "[%loop-value%] %{_name}% &7> &e%{_f}%"
+        
+        else if arg-1 is "tp":
+            if arg-2 is not set:
+                send "&7使い方: &f/loc tp %%Location ID%%"
+            Tp(player, arg-2)
+        
+        else if arg-1 is "name":
+            if arg-2 is not set:
+                send "&7使い方: &f/loc name %%Location ID%%"
+            setYML("loc", "%arg-2%.name", colored arg-3)
+
+        else if arg-1 is "warppoint":
+            if arg-3 is "true":
+                setYML("loc", "%arg-2%.iswarppoint", true)
+                send "trueにした"
+            else if arg-3 is "false":
+                setYML("loc", "%arg-2%.iswarppoint", false)
+                send "falseにした"
+            else:
+                send "&7使い方: &f/loc warppoint %%Location ID%% (true/false)"
+        
+        else if arg-1 is "warpicon":
+            setYML("loc", "%arg-2%.iswarppoint", arg-3)
+            send "わーぷあいこんを変えた"
+
+        else if arg-1 is "remove":
+            if arg-2 is not set:
+                send "&7使い方: &f/loc remove %%Location ID%%"
+            set {_Nodes::*} to all yml nodes of "loc"
+            loop {_Nodes::*}:
+                loop-value starts with "%arg-2%."
+                delete yml value loop-value from "loc"
+            delete yml value "%arg-2%" from "loc"
+        else:
+            send "&f/loc set (player/target) %%Location ID%% [yawpitch]"
+            send "&f/loc remove %%Location ID%%"
+            send "&f/loc list %%Location ID%%"
+            send "&f/loc tp %%Location ID%%"
+
+tab complete of "/loc":
+    set tab completions for position 1 to "set", "list", "tp", "remove", "warppoint", "name", "warpicon" and "reload"
+    if tab arg-1 = "set":
+        set tab completions for position 2 to "player" and "target"
+        set tab completions for position 4 to "yawpitch" and ""
+    else if tab arg-1 = "tp", "warppoint", "name", "warpicon" or "remove":
+        set tab completions for position 2 to yml node keys "" in "loc" 
+        if tab arg-1 = "warppoint":
+            set tab completions for position 3 to "true" and "false"
+command /skull:
+    permission: op
+    trigger:
+        give player player's skull
+command /tploc <text> <player> [<text>] [<text>]:
+    executable by: console
+    trigger:
+        if arg-3 is set:
+            set {_ID::*} to arg-3 parsed as "%text%:%number%"
+            set {_i} to {_ID::2} of {SkItem::%{_ID::1}%}
+            arg-2 doesn't have {_i}:
+                send "&7テレポートに失敗しました:" to arg-2
+                send "&c- %displayname of {_i}% &f×%{_id::2}% &7が必要です" to arg-2
+                stop
+            if arg-4 is not set:
+                send "%displayname of {_i}% &f×%{_id::2}% &7を消費しました" to arg-2
+                remove {_i} from arg-2
+        teleport arg-2 to {Loc::%arg-1%}
+        Sound2(arg-2, "entity.endermen.teleport", 1)
+function Tp(p: player, id: text):
+    teleport {_p} to getYML("loc", "%{_id}%.loc")
+tab complete of "/tploc":
+    set tab completions for position 1 to yml node keys "" in "loc" 

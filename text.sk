@@ -1,0 +1,52 @@
+function splitByNum(t: text, n: int, pf: text = "") :: texts:
+    set {_string::*} to {_t} split at ""
+    remove "" from {_string::*}
+    loop {_string::*}:
+        add 1 to {_a}
+        if {_a} is 1:
+            add {_pf} to {_c::*}
+        if {_a} is not {_n}:
+            add loop-value-1 to {_c::*}
+        else:
+            add loop-value-1 to {_c::*}
+            set {_string} to concat {_c::*}
+            add {_string} to {_s::*}
+            delete {_c::*}
+            set {_a} to 0
+    set {_string} to concat {_s::*}
+    if length of {_t} is not length of {_string}:
+        set {_string} to concat {_c::*}
+        add {_string} to {_s::*}
+    return {_s::*}
+function randomID(length: int) :: text:
+    set {_t} to ""
+    loop {_length} times:
+        set {_} to ""
+        while {_} is "":
+            set {_} to random element out of {RandomTxt::*}
+        set {_t} to "%{_t}%%{_}%"
+    return {_t}
+function formedChunk(t: text) :: text:
+    set {_a::*} to split {_t} at " "
+    return "%{_a::2}%,%{_a::4}%"
+function formedXYZ(l: location) :: text:
+    return "loc.%{_l}'s x-loc%,%{_l}'s y-loc%,%{_l}'s z-loc%,%{_l}'s world%"
+function unformedXYZ(t: text) :: location:
+    set {_num::*} to split {_t} at ","
+    replace all "loc." with "" in {_num::1}
+    set {_l} to location ({_num::1} parsed as a number), ({_num::2} parsed as a int), ({_num::3} parsed as a int) in world {_num::4}
+    return {_l}
+function formedVec(v: vector) :: text:
+    return "vec.%{_v}'s x%,%{_v}'s y%,%{_v}'s z%"
+function comma(n: number) :: text:
+    set {_} to -1
+    loop reversed (split "%{_n}%" by ""):
+        if loop-value = ".":
+            set {_} to -1
+        if mod({_}, 3) = 0:
+            {_} > 0
+            add "," to {_res::*}
+        add loop-value to {_res::*}
+        add 1 to {_}
+    set {_res::*} to reversed {_res::*}
+    return join {_res::*}

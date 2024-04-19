@@ -1,0 +1,64 @@
+options:
+    sellGuiTitle: "&8素材の解体"
+command /sksell [<number>] [<int>]:
+    permission: op
+    trigger:
+        give player setSell(player's tool, arg-1, arg-2)
+        send "&7せっていしました"
+command /sell [<player>]:
+    trigger:
+        set {_p} to arg ? player
+        sellMenu({_p})
+function sellMenu(p: player):
+    set {_u} to {_p}'s uuid
+    create gui with virtual chest with 4 rows named {@sellGuiTitle}:
+        make gui slot (integers from 0 to 35) with gray stained glass pane named "&7"
+        loop amount of {SellTemp::%{_u}%::*} times:
+            add 1 to {_S}
+            set {_i} to {SellTemp::%{_u}%::%{_S}%}
+            make gui slot ({_S}-1) with {_i}:
+                player has enough space for {_i}
+                give player {_i}
+                delete {SellTemp::%{_u}%::%{_S}%}
+                set {SellTemp::%{_u}%::*} to {SellTemp::%{_u}%::*}
+                sellMenu({_p})
+            set {_m} to tag "sell" of nbt of {_i}
+            set {_t} to tag "selltype" of nbt of {_i}
+            add ({_m} * item amount of {_i}) to {_sell::%{_t}%}
+        loop {_sell::*}:
+            add "&7- &f%loop-value% %{Money::%loop-index%::Name}%" to {_l::*}
+        make gui slot 35 with gold ingot named "» 解体する" with lore {_l::*}:
+            close player's inventory
+            loop {_sell::*}:
+                send "&7[解体で入手] &f%loop-value% %{Money::%loop-index%::Name}%"
+                add loop-value to {P::%{_u}%::%{Money::%loop-index%}%}
+            delete {SellTemp::%{_u}%::*}
+            sidebar({_p})
+    open last created gui to {_p}
+inventory click:
+    set {_p} to player
+    set {_u} to {_p}'S uuid
+    name of {_p}'s current inventory is {@sellGuiTitle}
+    cancel event
+    if clicked inventory is {_p}'s inventory:
+        set {_i} to event-slot
+        tag "sell" of nbt of {_i} is set
+        amount of {SellTemp::%{_u}%::*} <= 27
+        set {SellTemp::%{_u}%::*} to {SellTemp::%{_u}%::*}
+        add {_i} to {SellTemp::%{_u}%::*}
+        Sound2({_p}, "block.lever.click", 2)
+        set slot (index of clicked slot) of {_p}'s inventory to air
+        sellMenu({_p})
+function setSell(i: item, sell: number, type: int = 0) :: item:
+    add nbt of "{""selltype"":%{_type}%,""sell"":%{_sell}%}" to nbt of {_i}
+    add "&7[解体] &f%{_sell}% %{Money::%{_type}%::Name}%" to {_i}'s lore
+    return {_i}
+command /npctrade <text> <text>:
+    permission: item
+    trigger:
+        set {_id} to arg-1
+        set {_3} to arg-2
+        set {_3n} to {_3} parsed as a number
+        {_id} and {_3n} is set
+        set {NpcTrade::%{_id}%} to player's tool
+        set {NpcTrade::%{_id}%::Pay} to {_3n}

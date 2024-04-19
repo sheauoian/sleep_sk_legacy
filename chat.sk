@@ -1,0 +1,234 @@
+function endChat(p: player, a: boolean = true):
+    set {_u} to {_p}'s uuid
+    delete {P::%{_u}%::Chat}
+    delete {P::%{_u}%::ChatProg}
+    delete {P::%{_u}%::ChatProg2}
+    delete {P::%{_u}%::ChatLoc}
+    {_a} is true
+    send "&7[/]" to {_p}
+join:
+    endChat(player, false)
+function chat(p: player, a: text = ""):
+    {SpectatorMode} is true:
+        stop
+    set {_u} to {_p}'s uuid
+    Debug({_p}, "&eAnswer: %{_a}%")
+    if {P::%{_u}%::ChatF} is "skip":
+        stop
+    if {P::%{_u}%::Chat} is set:
+        set {_id} to {P::%{_u}%::Chat}
+
+    if {_a} is "":
+        set {_type} to 1
+        add 1 to {P::%{_u}%::ChatProg}
+    else if {_a} starts with "s.":
+        set {_type} to 2
+        replace all "s." with "" in {_a}
+        {P::%{_u}%::Chat} is {_a}:
+            stop
+        set {_id} to {_a}
+        set {P::%{_u}%::Chat} to {_a}
+        if {Chat::%{_id}%::Start} is set:
+            set {P::%{_u}%::ChatProg} to {Chat::%{_id}%::Start}
+        else:
+            set {P::%{_u}%::ChatProg} to 1
+        set {P::%{_u}%::ChatLoc} to {_p}'s location
+    else:
+        set {_type} to 3
+        set {_prog_} to {P::%{_u}%::ChatProg}
+        set {P::%{_u}%::ChatProg} to {Chat::%{_id}%::%{_prog_}%::%{_a}%}
+
+    
+    if {Chat::%{_id}%::Missiontarget} is set:
+        {Chat::%{_id}%::MissionNow} is set
+        set {_difference} to difference between {Chat::%{_id}%::MissionNow} and now
+        {_difference} is more than a hour
+        delete {Chat::%{_id}%::Missiontarget}
+
+    if {Chat::%{_id}%::%{P::%{_u}%::ChatProg}%} contains "if\" or "npctrade\":
+        set {_if::*} to split {Chat::%{_id}%::%{P::%{_u}%::ChatProg}%} at "|"
+        loop {_if::*}:
+            Debug({_p}, "&5If: %loop-value%")
+            set {_a::*} to split loop-value at ">"
+            set {_b::*} to split {_a::2} at "."
+            add 1 to {_n}
+            if skCode({_p}, {_a::1}) is 1:
+                if {_b::1} is "":
+                    continue
+                else:
+                    set {P::%{_u}%::ChatProg} to {_b::1} parsed as a int
+                    exit a loop
+            else if {_b::2} is set:
+                set {P::%{_u}%::ChatProg} to {_b::2} parsed as a int
+                exit a loop
+            if {_n} is amount of {_if::*}:
+                set {P::%{_u}%::ChatProg} to {_b::1} parsed as a int
+    
+    set {_prog} to {P::%{_u}%::ChatProg}
+    
+    if {_id} is not set:
+        stop
+
+    set {_key} to random integer between 0 and 999999
+    set {P::%{_u}%::AnswerKey} to {_key}
+
+    set {P::%{_u}%::ChatProg2} to {P::%{_u}%::ChatProg}
+
+    if {Chat::%{_id}%::%{_prog}%} is set:
+        set {_t} to "%{Chat::%{_id}%}% &7» &f%{Chat::%{_id}%::%{_prog}%}%"
+    else:
+        set {_t} to "&7*返事が無い。ただの運営の設計ミスのようだ。"
+    replace all "{p}" with "%{_p}%" in {_t}
+    replace all "{nl}" with nl in {_t}
+    replace all "{m}" with "%{P::%{_u}%::Dollar}%" in {_t}
+    replace all "{tg}" with "%{Chat::%{_id}%::Missiontarget}%" in {_t}
+
+    send {_t} to {_p}
+    Sound2({_p}, "block.note.hat", 2)
+
+    if {Chat::%{_id}%::%{_prog}%::Code} is set:
+        skCode({_p}, {Chat::%{_id}%::%{_prog}%::Code})
+
+    Debug({_p}, "&eProgress: %{_prog}%, Type: %{_type}%")
+
+    set {_pro1} to {_prog} + 1
+    if {Chat::%{_id}%::%{_pro1}%} is "end":
+        endChat({_p})
+        stop
+    else if {Chat::%{_id}%::%{_pro1}%} is not set:
+        endChat({_p})
+        stop
+
+    else if {Chat::%{_id}%::%{_prog}%.Q::*} is set:
+        set {P::%{_u}%::ChatF} to "skip"
+        wait 1.5 seconds
+        delete {P::%{_u}%::ChatF}
+
+        loop {Chat::%{_id}%::%{_prog}%.Q::*}:
+            set {_comp} to text component of "[%loop-value%]"
+            set click event of {_comp} to click event to run command "/answer %{_key}% %loop-index%"
+            set hover event of {_comp} to hover event showing "&e▶ Click &7<%loop-value%>"
+            set underlined format of {_comp} to true
+            add {_comp} and text component of " " to {_text::*}
+        send component {_text::*} to {_p}
+    
+    else:
+        set {P::%{_u}%::ChatF} to "skip"
+        wait 1.5 seconds
+        set {P::%{_u}%::ChatF} to 1
+
+        set {_comp} to text component of "|Click ▶|"
+        set color format of {_comp} to light gray
+        set click event of {_comp} to click event to run command "/answer %{_key}%"
+        set hover event of {_comp} to hover event showing "&e▶ クリックで会話を進める"
+        set underlined format of {_comp} to true
+        set {_f} to text component of " or F key"
+        set color format of {_f} to gray
+        send component {_comp} and {_f} to {_p}
+
+swap item:
+    {P::%player's uuid%::Chat} is set
+    cancel event
+    {P::%player's uuid%::ChatF} is 1:
+        execute player command "/answer %{P::%player's uuid%::AnswerKey}%"
+    else:
+        Sound2(player, "block.note.hat", 0.5)
+
+load:
+    set {Chat::tutorial} to "&aアリョーシャ"
+    set {Chat::tutorial::*} to "こんにちは!", "がんばって!", "すばらしいね!", "end", "しね!" and "end"
+    set {Chat::tutorial::2.Q::*} to "わかりました" and "いいえ"
+    set {Chat::tutorial::2::*} to 3 and 5
+
+command /chat.sk [<text>] [<text>] [<text>]:
+    permission: op
+    trigger:
+        set {_} to arg-1
+        set {_id::*} to split arg-2 at "."
+        set {_id} to {_id::1}
+        set {_Text} to colored arg-3
+        set {_3} to arg-3
+        if {_} is "add":
+            add {_Text} to {Chat::%{_id}%::*}
+        else if {_} is "set":
+            {_id::2} is set
+            set {Chat::%{_id}%::%{_id::2}%} to {_text}
+        else if {_} is "insert":
+            {_id::2} is set
+            loop {Chat::%{_id}%::*}:
+                add 1 to {_n}
+                if {_n} is {_id::2} parsed as a int:
+                    add {_Text} to {_list::*}
+                add loop-value to {_list::*}
+            set {Chat::%{_id}%::*} to {_list::*}
+        else if {_} is "remove":
+            {_id::2} is set
+            delete {Chat::%{_id}%::%{_id::2}%}
+            loop {Chat::%{_id}%::*}:
+                add loop-value to {_list::*}
+            set {Chat::%{_id}%::*} to {_list::*}
+        else if {_} is "list":
+            if {_id} is set:
+                if {_id::2} is set:
+                    loop {Chat::%{_id}%::%{_id::2}%.Q::*}:
+                        send "[%loop-index%]%loop-value% &e> %{Chat::%{_id}%::%{_id::2}%::%loop-index%}%"
+                else:
+                    loop {Chat::%{_id}%::*}:
+                        send "[%loop-index%]%loop-value%"
+            else:
+                loop {Chat::*}:
+                    send "[%loop-index%]%loop-value%"
+        else if {_} is "name":
+            set {Chat::%{_id}%} to {_Text}
+        else if {_} is "set.q":
+            if {_id::4} is set:
+                set {Chat::%{_id}%::%{_id::2}%.Q::%{_id::3}%} to {_text}
+                set {Chat::%{_id}%::%{_id::2}%::%{_id::3}%} to {_id::4} parsed as a int
+            else:
+                delete {Chat::%{_id}%::%{_id::2}%.Q::%{_id::3}%}
+                delete {Chat::%{_id}%::%{_id::2}%::%{_id::3}%}
+        else if {_} is "skcode":
+            {_id::2} is set
+            set {Chat::%{_id}%::%{_id::2}%::Code} to {_text}
+        else if {_} is "target":
+            send "%{Chat::%{_id}%::Missiontarget}%"
+            delete {Chat::%{_id}%::Missiontarget}
+        
+        else if {_} is "start":
+            set {Chat::%{_id}%::Start} to {_3} parsed as a int
+
+every 10 seconds:
+    loop all players:
+        {P::%loop-player's uuid%::ChatLoc} is set
+        distance between {P::%loop-value's uuid%::ChatLoc} and loop-player >= 10
+        send "&7チャットが中断された!" to loop-player
+        endChat(loop-player, false)
+
+
+
+# 以下コンソール用コマンド
+command /chat <text> [<player>]:
+    permission: op
+    trigger:
+        if arg-2 is set:
+            chat(arg-2, "s.%arg-1%")
+        else:
+            chat(player, "s.%arg-1%")
+tab complete of "/chat":
+    loop {Chat::*}:
+        add loop-index to {_comp::*}
+    set tab completions for position 1 to {_comp::*}
+
+tab complete of "/chat.sk":
+    set tab completions for position 1 to "add", "set", "target", "skcode", "name", "set.q", "list", "remove", "start" and "insert"
+command /answer [<int>] [<text>]:
+    trigger:
+        set {_p} to player
+        set {_u} to {_p}'s uuid
+        if arg-1 is not {P::%{_u}%::AnswerKey}:
+            Debug({_p}, "Keyが違います")
+            stop
+        if arg-2 is not set:
+            chat({_p})
+        else:
+            chat({_p}, arg-2)

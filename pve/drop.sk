@@ -1,0 +1,107 @@
+load:
+    set {mScS::*} to 18000, 1000, 200, 150, 30 and 1
+
+function generateMobDrop(p: player, mid: text) :: items:
+    set {_am} to random integer between {Drop::%{_mid}%::max} and {Drop::%{_mid}%::min}
+    loop {_am} times:
+        set {_r} to random element out of {Drop::%{_mid}%::Items::*}
+        set {_ID} to displayname of {_r}
+        loop item amount of {_R} times:
+            
+            set {_I} to getMaterialItem({_p}, {_ID})
+            set {_Lv} to tag "itemscore" of nbt of {_I}
+            {_i::%{_ID}%.%{_Lv}%} is not set:
+                set {_i::%{_ID}%.%{_Lv}%} to {_I}
+            add 1 to {_a::%{_ID}%.%{_Lv}%}
+    loop {_i::*}:
+        set {_i::%loop-index%} to {_a::%loop-index%} of {_i::%loop-index%}
+    return {_i::*}
+
+
+death:
+    victim doesn't contain all players
+    clear drops
+command /mobdrop <text> <int> <int>:
+    permission: item
+    trigger:
+        set {_id} to arg-1
+        set {Drop::%{_id}%::max} to arg-3
+        set {Drop::%{_id}%::min} to arg-2
+        setMobDrop(player, {_id})
+function setMobDrop(p: player, id: text):
+    open chest with 2 rows named "mob drop setting [%{_id}%]" to {_p}
+    set {_} to 0
+    loop {Drop::%{_id}%::Items::*}:
+        set slot {_} of {_p}'s current inventory to loop-value
+        add 1 to {_}
+    while name of {_p}'s current inventory is "mob drop setting [%{_id}%]":
+        set {_i::*} to all items of {_p}'s current inventory
+        wait 5 ticks
+    set {Drop::%{_id}%::Items::*} to {_i::*}
+function mobDrops(p: player, mid: text):
+    loop generateMobDrop({_p}, {_mid}):
+        set {_i} to loop-value
+        set {_ID} to tag "material" of nbt of {_i}
+        set {_msc} to tag "itemscore" of nbt of {_i}
+        send "&7[%{MscoreP::%{_msc}%}%&f || %{Material::%{_ID}%::Name}% x%item amount of {_i}%]" to {_p}
+        give {_p} {_i}
+
+function getRequireXp(l: number) :: int:
+    return ceil(({_l}^2)*2 - {_l}*3 + 11)
+command /mmxp [<text>] [<text>]:
+    permission: op
+    trigger:
+        set {_id} to arg-1
+        set {_n} to arg-2 parsed as a number
+        {_id} and {_n} is set
+        set {mmXP::%{_id}%} to {_n}
+        send "設定されたぞ: %{_id}% -> %{_n}%"
+spawn:
+    wait 10 ticks
+    set {_id} to tag "BukkitValues;mythicmobs:type" of nbt compound of event-entity
+    {_id} is set
+    set {_e} to event-entity
+    if {_e}'s helmet is air:
+        set {_e}'s helmet to bowl with nbt nbt of "{model:""none""}"
+    set {_l} to {_e}'s location
+    while {_e} is alive:
+        wait 3 seconds
+        distance between {_l} and {_e} >= 30:
+            teleport {_e} to {_l}
+        players in radius 40 around {_e} is not set:
+            if metadata "nest" of {_e} is set:
+                set {_id} to metadata "nest" of {_e}
+                {Nest::%{_id}%} is set
+                stopNest(metadata "nest" of {_e})
+            set {_l}'s y-loc to -100
+            teleport {_e} to {_l}
+            wait a tick
+            kill {_e}
+load:
+    delete {xpPrefix::*}
+function giveXP(p: player, l: location, xp: number):
+    type of block at {_l}~v(0, 1, 0) is air:
+        set {_l} to {_l}~v(0, 1, 0)
+    set {_u} to {_p}'s uuid
+    add {_xp} to {P::%{_u}%::Xp}
+    play sounds "entity.experience_orb.pickup" in ambient category at volume 2 and pitch 2 at {_l}
+    set {_v} to randomVector(0.5)
+    create a new hologram with line "&a%{_xp}%xp" at {_l} ~ {_v}
+    set {_} to last created hologram
+    checkLevel({_p})
+    wait 3 seconds
+    delete holo {_}
+function checkLevel(p: player):
+    set {_u} to {_p}'s uuid
+    if {P::%{_u}%::Lvl} is not set:
+        set {P::%{_u}%::Lvl} to 0
+    set {_xp} to {P::%{_u}%::Xp}
+    while getRequireXp({P::%{_u}%::Lvl}+1) <= {P::%{_u}%::Xp}:
+        add 1 to {_}
+        add 1 to {P::%{_u}%::Lvl}
+        remove getRequireXp({P::%{_u}%::Lvl}) from {P::%{_u}%::Xp}
+    if {_} >= 1:
+        send title "&eLevel Up↑ &eLv.&l%{P::%{_u}%::Lvl}%" to {_p}
+        add {_} to {P::%{_u}%::Orb}
+        send "&7[&lCOMMON &f|| &fステータスオーブ &fx%{_}%]" to {_p}
+    playerSidebar({_p})

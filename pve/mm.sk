@@ -1,0 +1,12 @@
+import:
+    io.lumine.mythic.bukkit.MythicBukkit
+    io.lumine.mythic.bukkit.BukkitAdapter
+    
+function spawnMM(id: text, l: location):
+    set {_m} to MythicBukkit.inst().getMobManager().getMythicMob({_id}).get()
+    set {_al} to BukkitAdapter.adapt({_l})
+    {_m}.spawn({_al}, 1)
+command /mmspawn [<text>]:
+    permission: op
+    trigger:
+        spawnMM((arg ? "SkeletalKnight"), player's location)

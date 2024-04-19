@@ -1,0 +1,77 @@
+# ワープポイントへのワープGUI
+function warpList(p: player, loc: location, o: vector, my: int):
+    set {_u} to {_p}'s uuid
+    set {_mx} to floor(({_loc}'s x-loc-9) / {_my}) + {_o}'s x
+    set {_mz} to floor(({_loc}'s z-loc-9) / {_my}) + {_o}'s z
+    create a gui with virtual chest with 6 rows named "&8« &lワープポイント一覧 &8»":
+        make gui slot (integers from 0 to 53) with gray stained glass pane named "&7"
+        make gui slot 53 with barrier named "&7» &fメニューに戻る":
+            execute {_p} command "/menu"
+        make gui slot 4 with lime stained glass pane named "&7&l北 (クリックでマップを上に動かす)":
+            add 1 to {_o}'s z
+            warpList({_p}, {_loc}, {_o}, {_my})
+        make gui slot 18 with lime stained glass pane named "&7&l西 (クリックでマップを右に動かす)":
+            add 1 to {_o}'s x
+            warpList({_p}, {_loc}, {_o}, {_my})
+        make gui slot 26 with lime stained glass pane named "&7&l東 (クリックでマップを左に動かす)":
+            remove 1 from {_o}'s x
+            warpList({_p}, {_loc}, {_o}, {_my})
+        make gui slot 49 with lime stained glass pane named "&7&l南 (クリックでマップを下に動かす)":
+            remove 1 from {_o}'s z
+            warpList({_p}, {_loc}, {_o}, {_my})
+        make gui slot 0 with paper with nbt "{model:p%{_my}%}" named "&7みぎくりで拡大 ひだりくりで縮小(現在: 1/%{_my}%)":
+            set {_ct} to "%click type%"
+            if {_ct} contains "left mouse button":
+                {_my} < 4096
+                set {_loc} to {_loc} ~ vector({_o}'s x * {_my}, 0, {_o}'s z * {_my})
+                set {_o} to vector(0, 0, 0)
+                if {_ct} contains "shift":
+                    set {_my} to 4096
+                else:
+                    add {_my} to {_my}
+                warpList({_p}, {_loc}, {_o}, {_my})
+            else if {_ct} contains "right mouse button":
+                {_my} > 32
+                set {_loc} to {_loc} ~ vector({_o}'s x * {_my}, 0, {_o}'s z * {_my})
+                set {_o} to vector(0, 0, 0)
+                if {_ct} contains "shift":
+                    set {_my} to 32
+                else:
+                    remove {_my}/2 from {_my}
+                warpList({_p}, {_loc}, {_o}, {_my})
+        loop {Wpoint::*}:
+            loop-value is true
+            set {_id} to loop-index
+            {Loc::%{_id}%}'s world is {_p}'s world
+            set {_L} to {Loc::%{_id}%}
+            set {_x} to floor({_l}'s x-loc / {_my}) - {_mx} + 4
+            set {_z} to floor({_l}'s z-loc / {_my}) - {_mz} + 2
+            if abs({_x}-4) >= 4:
+                continue
+            if abs({_z}-2.5) >= 2.5:
+                continue
+            {PWarp::%{_u}%::*} doesn't contain {_id}:
+                make gui slot ({_x} + {_z}*9) with bedrock named "&7未解放のワープポイント"
+                continue
+            {WpointIcon::%{_id}%} is not set:
+                set {WpointIcon::%{_id}%} to "11"
+            set {_I} to paper with nbt "{model:%{WpointIcon::%{_id}%}%}" named "&3« ワープポイント &f%{Loc::%{_id}%::Name}% &3»" with lore "&f&nクリックでテレポート"
+            make gui slot ({_x} + {_z}*9) with {_I}:
+                if click type is drop key:
+                    set {_loc} to {Loc::%{_id}%}
+                    warpList({_p}, {_loc}, vector(0, 0, 0), {_my})
+                else:
+                    {P::%{_u}%::WarpWait} is not set:
+                        set {P::%{_u}%::WarpWait} to 0 ticks
+                    if {P::%{_u}%::WarpCT} is set:
+                        {P::%{_u}%::WarpCT} is more than {P::%{_u}%::WarpWait} ago
+                        set {_D} to difference between {P::%{_u}%::WarpWait} and difference between {P::%{_u}%::WarpCT} and now
+                        send "&cワープにはあと %{_D}% &c待つ必要があります" to {_p}
+                        stop
+                    close {_p}'s inventory
+                    Warp(player, {_id}, false, 10 seconds)
+    open last gui to {_p}
+command /warp:
+    permission: op
+    trigger:
+        warpList(player, player's location, vector(0, 0, 0), 64)

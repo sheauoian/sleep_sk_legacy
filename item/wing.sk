@@ -1,0 +1,27 @@
+swap item:
+    player's offhand tool is {Skitem::Fly}
+    cancel event
+    gravity of player is on:
+        loop 2 times:
+            add 1 to {_}
+            block at (player's location ~ v(0, {_}*-1, 0)) is not air
+            stop
+        ToggleFlight(player)
+    else:
+        delete {PFly.%player%}
+join:
+    set gravity of player to on
+function ToggleFlight(p: player, i: int = -1):
+    Sound1({_p}'s location, "entity.enderdragon.flap", 2)
+    set gravity of {_p} to off
+    set {PFly.%{_p}%} to 1
+    while block at ({_p}'s location ~ v(0, -1, 0)) is air:
+        set {_p}'s fall distance to 0
+        set {_v} to vector from yaw {_p}'s yaw and pitch 20
+        set standard length of {_v} to 0.4
+        set {_p}'s velocity to {_v}
+        wait a tick
+        {PFly.%{_p}%} is not set:
+            exit a loop
+    set gravity of {_p} to on
+    Sound1({_p}'s location, "entity.enderdragon.flap", 2)

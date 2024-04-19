@@ -1,0 +1,268 @@
+# オプション
+options:
+    gui: "武器・装備の設定"
+    guilvlup: "武器・装備の強化"
+    sub: "&7 [ サブステータス枠 ]"
+
+command /lvup:
+    trigger:
+        weaponLevelUpGui(player)
+
+#実験用
+command /guis:
+	trigger:
+		loop all of the registered gui identifiers:
+			send loop-string
+
+function weaponLevelUpGui(p: player):
+    set {_u} to {_p}'s uuid
+    gui "lvlupweapon.%{_p}%" doesn't exist:
+        create a gui "lvlupweapon.%{_p}%" with virtual chest with 3 row named {@guilvlup}
+    set {_gui} to gui with id "lvlupweapon.%{_p}%"
+    if {P::%{_u}%::WeaponLvlUp} is not set:
+        edit {_gui}:
+            make gui slot (integers between 0 to 24) with gray stained glass pane named "&a"
+            make gui slot 10 with iron bar named "&c強化したい武器/防具を武器庫から選択してください":
+                execute player command "/arsenal"
+    else:
+        set {_I} to {P::%{_u}%::WeaponLvlUp}
+        set {_temp::*} to split (uncolored line 1 of lore of {P::%{_u}%::WeaponLvlUp}) at ";"
+        set {_ID} to {_temp::1}
+        set {P::%{_u}%::WeaponLvlUpID} to {_ID}
+        set {_Lvl} to getWeaponLevel({_I})
+
+        edit {_gui}:
+            make gui slot (integers between 0 to 24) with gray stained glass pane named "&a"
+            make gui slot 10 with {_I}:
+                click type is drop key:
+                    addArsenal(player, {P::%{_u}%::WeaponLvlUp}, {P::%{_u}%::WeaponLvlUpType}) is false:
+                        stop
+                    delete {P::%{_u}%::WeaponLvlUp}
+                    edit {_gui}:
+                        make gui slot (integers between 0 to 24) with gray stained glass pane named "&a"
+                        make gui slot 10 with iron bar named "&c強化したい武器/防具を武器庫から選択してください":
+                            execute player command "/arsenal"
+                else:
+                    execute player command "/arsenal"
+
+        if {_Lvl} >= max(8, {Weapon::%{_id}%::Rarity}*4):
+            edit {_gui}:
+                make gui slot 16 with barrier named "&cこれ以上強化できません"
+            open {_gui} to {_p}
+            stop
+
+        set {_l::*} to "&7&m   &7« &3&l交換素材 &7»&m       &7"
+
+        set {_Es} to (({_Lvl}+1)*5)^2
+        if {_Es} > {P::%{_u}%::Essence}:
+            add "&f %{_Es}% &aエッセンス&f( &c%{P::%{_u}%::Essence}%&f )" to {_l::*}
+        else:
+            add "&f %{_Es}% &aエッセンス&f( &a%{P::%{_u}%::Essence}%&f )" to {_l::*}
+
+        if {_Lvl::2} is 5, 11, 17 or 23:
+            set {_Need} to ({_Lvl}+1)*2
+            loop max(2,ceil({_Lvl}/6)) times:
+                add 1 to {_}
+                set {_Name} to {Material::%{weapon::%{_id}%::M%{_}%}%::Name}
+                {P::%{_u}%::WeaponLvlUp::%{_}%} is set:
+                    edit {_gui}:
+                        make gui slot (18+{_}) with {P::%{_u}%::WeaponLvlUp::%{_}%}:
+                            {_p}'s inventory has enough space for {P::%{_u}%::WeaponLvlUp::%{_}%}
+                            give {_p} {P::%{_u}%::WeaponLvlUp::%{_}%}
+                            delete {P::%{_u}%::WeaponLvlUp::%{_}%}
+                            edit {_gui}:
+                                make gui slot (18+{_}) with iron bar named "&7[ &f%{_Name}% &f×%{_Need}% &7]"
+                else:
+                    edit {_gui}:
+                        make gui slot (18+{_}) with iron bar named "&7[ &f%{_Name}% &f×%{_Need}% &7]"
+                add "&f %{Material::%{weapon::%{_id}%::M%{_}%}%::Name}% &f×%{_Need}%" to {_l::*}
+                set {_Need} to ceil({_Need}/2)
+        else:
+            edit {_gui}:
+                make gui slot (integers between 19 to 21) with gray stained glass pane named "&a"
+        set {_Button} to lime concrete named "&f» レベルアップ &7[&e +%{_Lvl}%&e → &l%{_Lvl}+1% &7]" with lore {_l::*}
+        edit {_gui}:
+            make gui slot 16 with {_Button}:
+                {P::%{_u}%::Essence} > {_Es}
+                {_Lvl} is 5, 11, 17 or 23:
+                    amount of {P::%{_u}%::WeaponLvlUp::*} != max(2,ceil({_Lvl}/6)):
+                        stop
+                    delete {P::%{_u}%::WeaponLvlUp::*}
+                remove {_Es} from {P::%{_u}%::Essence}
+                set {P::%{_u}%::WeaponLvlUp} to weaponLevelUp({P::%{_u}%::WeaponLvlUp}, {_p}, 1)
+                Sound2({_p}, "block.note.bell", 1.6)
+                weaponLevelUpGui({_p})
+    edit {_gui}:
+        make gui slot 25 with diamond chestplate named "&f» ステータス・武器/防具設定 &7[/setweapon]":
+            execute player command "/setweapon"
+        make gui slot 26 with barrier named "&cメインメニューに戻る":
+            open gui "main" to player
+    open {_gui} to {_p}
+
+inventory click:
+    set {_p} to player
+    set {_u} to player's uuid
+    name of player's current inventory is {@guilvlup}
+    cancel event
+    set {_i} to event-slot
+    if {P::%{_u}%::WeaponLvlUp} is set:
+        tag "material" of nbt of {_i} is set
+        set {_Lvl::*} to uncolored displayname of {P::%{_u}%::WeaponLvlUp} parsed as "%text% +%integer%"
+        {_Lvl::2} is 5, 11, 17 or 23
+        set {_id} to {P::%{_u}%::WeaponLvlUpID}
+        set {_mid} to tag "material" of nbt of {_i}
+        set {_Need} to ({_Lvl::2}+1)*2
+        loop max(2,ceil({_Lvl::2}/6)) times:
+            add 1 to {_}
+            if {weapon::%{_id}%::M%{_}%} is {_mid}:
+                {P::%{_u}%::WeaponLvlUp::%{_}%} is not set
+                item amount of {_i} >= {_Need}
+                remove {_Need} of {_i} from {_p}
+                set {P::%{_u}%::WeaponLvlUp::%{_}%} to {_Need} of {_i}
+                weaponLevelUpGui({_p})
+                exit a loop
+            set {_Need} to ceil({_Need}/2)
+function getWeaponLevel(i: item) :: integer:
+    set {_Name} to uncolored displayname of {_I}
+    if {_Name} contains "+":
+        set {_L::*} to {_Name} parsed as "%text% +%integer%"
+        return {_L::2}
+    return 0
+
+
+function weaponLevelUp(i: item, p: player, lvlup: int = 1) :: item:
+    set {_l_::*} to lore of {_i}
+    set {_uid::*} to uncolored {_l_::1} parsed as "%text%;%integer%"
+    set {_id} to {_uid::1}
+    set {_Type} to {Weapon::%{_id}%::Type}
+    set {_lvl} to getWeaponLevel({_i})
+    set {_Rarity} to {Weapon::%{_id}%::Rarity}
+    set {_SubMax} to max(min(4, {_Rarity}), 2)
+
+    if {WType::%{Weapon::%{_id}%::Type}%::Type} is "weapon":
+        set {_atype} to "weapon"
+    else:
+        set {_atype} to {Weapon::%{_id}%::Type}
+    set {_l::1} to {_l_::1}
+
+    #
+    # 武器ステータスの設定
+    #
+    
+    loop indices of {Stat::*}:
+        add loop-value to {_stat.%{Stat::%loop-value%::Rarity}%::*}
+
+    if {WType::%{_Type}%::Type} is "weapon":
+        set {_base} to ceil(({Weapon::%{_id}%::Power} * ({_lvl} + {_lvlup} + 1))/2)
+        set {_l::2} to "&f● 基礎攻撃力 %{_base}%"
+        set {_l::3} to "&f"
+    
+    #   メインステータス
+    add "&f&m     &f メインステータス &m     " to {_l::*}
+    add "&f" to {_l::*}
+    set {_main} to {Weapon::%{_id}%::Main}
+    remove "%{_main}%" from {_stat.%{Stat::%{_main}%::Rarity}%::*}
+
+    set {_main.name} to "%{Stat::%{_main}%::Color}%%{Stat::%{_main}%::Symbol}% %{Stat::%{_main}%::Name}%"
+
+    set {_main.value} to {Weapon::%{_id}%::Main.Amount} * ({_lvl} + {_lvlup} + 1)
+    if {Stat::%{_main}%::Percent} is 1:
+        set {_main.value} to "%{_main.value}%%%"
+    else if {Stat::%{_main}%::Percent} is 2:
+        {Weapon::%{_id}%::Main.isPercent} is "true":
+            set {_main.value} to "%{_main.value}%%%"
+            set {_tempsub.%{_main}%} to 1
+        else:
+            set {_tempsub.%{_main}%} to 0
+
+    add "&0%{_main.name}%&f %{_main.value}%" to {_l::*}
+    add "&f" to {_l::*}
+
+    # サブオプション
+    add "&7&m     &7 サブステータス &m       " to {_l::*}
+    add "&f" to {_l::*}
+    loop {_l_::*}:
+        set {_temp::*} to split uncolored "%loop-value%" at " "
+        {_temp::3} is set:
+            {StatsNum::%{_temp::2}%} is set
+            set {_sub} to {StatsNum::%{_temp::2}%}
+            {_sub} is not {_main}
+            add loop-value to {_l::*}
+            remove "%{_sub}%" from {_stat.%{Stat::%{_temp::2}%::Rarity}%::*}
+            if loop-value contains "%%":
+                set {_tempsub.%{_sub}%} to 1
+                set {_amount.%{_sub}%} to ({_temp::3} parsed as a number) * 100
+            else:
+                set {_tempsub.%{_sub}%} to 0
+                set {_amount.%{_sub}%} to {_temp::3} parsed as a number
+            add "%{_sub}%,%amount of {_l::*}%" to {_sublist::*}
+        if loop-value is {@sub}:
+            add {@sub} to {_l::*}
+    
+    set {_Rare::*} to 5, max(0, {_rarity} - 1), max(0, {_rarity}*2 - 7)
+    set {_Raresum} to sum({_Rare::*})
+
+    loop {_lvlup} times:
+        add 1 to {_lvl}
+        if mod({_lvl}, 4) = 0:
+            if "%{_l::*}%" contains {@sub}:
+                loop {_l::*}:
+                    add 1 to {_line}
+                    loop-value-2 is {@sub}:
+                        {_emptysubs} is not set:
+                            set {_SubRand} to random integer between 1 to {_Raresum}
+                            set {_SubRarity} to 1
+                            loop {_Rare::*}:
+                                remove {_Rare::%loop-index-2%} from {_SubRand}
+                                {_SubRand} <= 0
+                                set {_SubRarity} to loop-index-2
+                                exit a loop
+                            set {_sub} to random element out of {_stat.%{_SubRarity}%::*}
+                            set {_sub.name} to "%{Stat::%{_sub}%::Color}%%{Stat::%{_sub}%::Symbol}% %{Stat::%{_sub}%::Name}%"
+                            set {_sub.value} to 5
+                            if {_subrarity} is "3":
+                                set {_sub.name} to "&9★%{_sub.name}%"
+                            if {Stat::%{_sub}%::Percent} is 2:
+                                if {_tempsub.%{_sub}%} is set:
+                                    {_tempsub.%{_sub}%} is 0:
+                                        set {_sub.value} to "%{_sub.value}%%%"
+                                    remove {_sub} from {_stat.%{_SubRarity}%::*}
+                                else:
+                                    chance of 50%:
+                                        set {_sub.value} to "%{_sub.value}%%%"
+                                        set {_tempsub.%{_sub}%} to 1
+                                    else:
+                                        set {_tempsub.%{_sub}%} to 0
+                            else if {Stat::%{_sub}%::Percent} is 1:
+                                set {_sub.value} to "%{_sub.value}%%%"
+                                remove {_sub} from {_stat.%{_SubRarity}%::*}
+                            set {_l::%{_line}%} to "&0%{_sub.name}%&f %{_sub.value}%"
+                            add 1 to {_removesubs}
+                        add 1 to {_emptysubs}
+                        exit a loop
+            else:
+                set {_up} to random element out of {_sublist::*}
+                set {_sub::*} to split {_up} at ","
+                add random integer between 2 to 5 to {_amount.%{_sub::1}%}
+                if {_tempsub.%{_sub}%} is 1:
+                    set {_sub.value} to "%{_amount.%{_sub::1}%}%%%"
+                else:
+                    set {_sub.value} to {_amount.%{_sub::1}%}
+                set {_sub.name} to "%{Stat::%{_sub::1}%::Color}%%{Stat::%{_sub::1}%::Symbol}% %{Stat::%{_sub::1}%::Name}%"
+                
+                set {_l::%{_sub::2}%} to "&0%{_sub.name}%&f %{_sub.value}%"
+    add "&f" to {_l::*}
+    
+    #
+    # 最終処理
+    #
+    add "&7« &e%{Rarity::%{Weapon::%{_id}%::Rarity}%}% &7%{WType::%{_Type}%}% &7»" to {_l::*}
+    set {_i}'s displayname to "%{MaterialColor::%{_Rarity}%}%%{Weapon::%{_id}%::Name}% &e+%{_lvl}%"
+    set {_i}'s lore to {_l::*}
+
+    set {_u} to {_p}'s uuid
+    if {_l::1} is line 1 of lore of {PW::%{_u}%::%{P::%{_u}%::WeaponLvlUpType}%}:
+        set {PW::%{_u}%::%{P::%{_u}%::WeaponLvlUpType}%} to {_i}
+        updatePlayerStatus({_p})
+    
+    return {_i}

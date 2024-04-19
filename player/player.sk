@@ -1,0 +1,90 @@
+command /pinfo [<offline player>]:
+    permission: op
+    trigger:
+        if arg is set:
+            set {_u} to arg's uuid
+        else:
+            set {_u} to player's uuid
+        loop {P::%{_u}%::*}:
+            send "[%loop-index%] %loop-value%"
+command /amount <int>:
+    permission: op
+    trigger:
+        set item amount of player's tool to arg
+
+
+function playerSidebar(p: player):
+    set {_u} to {_p}'s uuid
+    set {_9::1} to "&f[Lv.%{P::%{_u}%::Lvl}%] %{Job::%{P::%{_u}%::Job}%}%"
+    set {_9::2} to "(Next %getRequireXp({P::%{_u}%::Lvl}+1)-{P::%{_u}%::Xp}%xp)"
+    set line 9 of {_p}'s scoreboard to join {_9::*} with " "
+    set line 8 of {_p}'s scoreboard to ""
+
+
+# 投票系
+command /onvote <player>:
+    permission: op
+    trigger:
+        set {_p} to arg
+        set {_u} to {_p}'s uuid
+        add 1 to {P::%{_u}%::vote}
+        broadcast "&7» &e%{_p}% &fさんは &d投票 &fした &7(%{P::%{_u}%::vote}%回目)"
+        send "&7» &d&l圧倒的&dな&l感謝&dを&lあなた&dに。&8ささやかながら、りんごをお贈りします。" to {_p}
+        addApple({_p}, a random integer between 5 to 10)
+        if mod({P::%{_u}%::vote}, 5) = 0:
+            send "&e" to {_p}
+            if mod({P::%{_u}%::vote}, 10) = 0:
+                if mod({P::%{_u}%::vote}, 50) = 0:
+                    send "&7*&e…%{P::%{_u}%::vote}%&e回目ですかぁ? あｇｄｓがｓｊｄばｆｊｄｋｆｊ！！！！！！"
+                    addApple({_p}, 1000)
+                else:
+                    send "&7*&e%{P::%{_u}%::vote}%&e回目? すごくすごい…"
+                    addApple({_p}, a random integer between 20 to 30)
+            else:
+                send "&7*&e%{P::%{_u}%::vote}%&eですか。やるじゃないの。"
+                addApple({_p}, a random integer between 10 to 15)
+function addApple(p: player, i: int):
+    set {_u} to {_p}'s uuid
+    loop {_i} times:
+        chance of 3%:
+            add 1 to {_gold}
+        else:
+            add 1 to {_normal} 
+    if {_gold} is set:
+        send "&e[ &6GOLDAPPLE +&l%{_gold}% &e]" to {_p}
+        add {_gold} to {P::%{_u}%::goldapple}
+    if {_normal} is set:
+        send "&4[ &cAPPLE +&l%{_normal}% &4]" to {_p}
+        add {_normal} to {P::%{_u}%::apple}
+
+command /apple:
+    trigger:
+        set {_p} to player
+        set {_u} to {_p}'s uuid
+        send "&4◆ &cAPPLE      &7- &f&l%{P::%{_u}%::apple}%&f個 &7所有しています"
+        send "&6◆ &eGOLD APPLE &7- &f&l%{P::%{_u}%::goldapple}%&f個 &7所有しています"
+command /getapple <int>:
+    trigger:
+        arg >= 1
+        set {_p} to player
+        set {_u} to {_p}'s uuid
+        if arg <= {P::%{_u}%::apple}:
+            set {_am} to min(64, arg)
+        else if {P::%{_u}%::apple} >= 1:
+            set {_am} to {P::%{_u}%::apple}
+        else:
+            send "&7りんごを持っていませんでした"
+            stop
+        set {_i} to getMaterialItem({_p}, "apple", 5)
+        player has enough space for {_am} of {_i}:
+            give player {_am} of {_i}
+            remove {_am} from {P::%{_u}%::apple}
+            send "&f「りんご ×%{_am}%」&7を受け取りました (残り %{P::%{_u}%::apple}%&7個)"
+        else:
+            send "&7インベントリに空きスペースがありませんでした"
+inventory click:
+    "%type of clicked inventory%" is "crafting table inventory"
+    clicked slot is 1 or 2:
+        execute player command "/menu"
+    clicked slot is 3:
+        execute player command "/setweapon"

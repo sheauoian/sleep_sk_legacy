@@ -1,0 +1,12 @@
+command /credits:
+    trigger:
+        send "&7"
+        send "&f¶ &lCredits"
+        send "&7いろいろ &f_not_ka_not_"
+        send "&7色ガラス認証システム &fSilverbullet_Rye"
+        send "&7ハロワ建築 &fmasa_2005"
+        set {_debug} to join {Debugs::*} with ", "
+        send "&7デバッグ協力 &f%{_debug}%"
+        send "&7スペシャルサンクス &fWhitestar_ch, %player%"
+        send "&7Hosting by &bPlayer&dRealms&f, &3Rezxis"
+        send "&7"

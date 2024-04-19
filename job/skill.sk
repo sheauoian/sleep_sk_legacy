@@ -1,0 +1,148 @@
+#　スキル発動のファンクション
+function skillCheck(p: player, id: text, mana: int, sec: int, isBossbar: boolean = false, title: text = "title") :: boolean:
+    set {_u} to {_p}'s uuid
+    set {_mana} to floor({_mana} * (1-{Pstat::%{_u}%::mana_efficient}))
+    if {P::%{_u}%::Mana} < {_mana}:
+        send action bar "&cマナが足りません! (%{_mana}%)" to {_p}
+        Sound2({_p}, "entity.chicken.egg", 0.7, 0.2)
+        return false
+    if {Skill::%{_u}%::%{_id}%} is set:
+        set {_time} to "%{_sec}% seconds" parsed as timespan
+        set {_dif} to difference between {Skill::%{_u}%::%{_id}%} and now
+        {_dif} is smaller than {_time}
+        return false
+    if {_sec} > 0:
+        set {Skill::%{_u}%::%{_id}%} to now
+    if {_isBossBar} is true:
+        skillBossBar({_p}, {_id}, {_title}, {_sec})
+    remove {_mana} from {P::%{_u}%::Mana}
+    return true
+function skillBossBar(p: player, id: text, title: text, sec: int):
+    set {_u} to {_p}'s uuid
+    create bossbar title {_title} and id "%{_p}%.%{_id}%" for {_P}
+    loop {_sec} times:
+        add 1 to {_}
+        set bossbar "%{_p}%.%{_id}%" title to "%{_title}% - %{_sec} - {_}+ 1%秒"
+        set bossbar "%{_p}%.%{_id}%" value to (ceil(100 / {_sec})) * ({_sec} - {_} + 1)
+        set bossbar "%{_p}%.%{_id}%" color to red
+        wait a second
+    remove bossbar "%{_p}%.%{_id}%"
+function getEnemies(e: entity, r: number) :: entities:
+    set {_E::*} to all entities in radius {_r} around {_e}
+    remove all players from {_E::*}
+    remove all dropped items from {_E::*}
+    remove all experience orbs from {_E::*} 
+    remove {_e} from {_E::*}
+    return {_E::*}
+function getEnemiesAL(e: location, r: number) :: entities:
+    set {_E::*} to all entities in radius {_r} around {_e}
+    remove all players from {_E::*}
+    remove all dropped items from {_E::*}
+    remove all experience orbs from {_E::*} 
+    return {_E::*}
+
+
+command /p:
+    permission: op
+    trigger:
+        send "%available particles%"
+
+# st = (D -> ダメージ倍率, b -> 飛距離(b), s -> 速さ(b/tick), c -> 補完回数)
+# b/s -> t
+#
+
+
+command /projectile [<text>] [<text>]:
+    permission: op
+    trigger:
+        set {_} to arg-1
+        set {_id} to arg-2
+        {_} is "reload":
+            defineYML("proj", "projectiles")
+        else:
+            if yml "proj" isn't loaded:
+                defineYML("proj", "projectiles")
+            {_} is "create":
+                {_id} is set:
+                    getYML("proj", "%{_id}%.damage") is set:
+                        send mini message from "<##aaaaaa>Projectile [%{_id}%] は既に存在します" to player
+                    else:
+                        defineProjectile({_id})
+                else:
+                    set {_} to "<##aaaaaa>Usage: /projectile create <ID>"
+                    send mini message from {_} to player
+            else if getYML("proj", "%{_id}%.damage") is set:
+                {_} is "cast":
+                    projectile(player, {_id})
+                else if {_} is "get":
+                    set {_i} to stick named "&5魔法の杖"
+                    set tag "proj" of nbt of {_i} to {_id}
+                    give player {_i}
+            else if {_id} is set:
+                send "<##aaaaaa>Projectile [%{_id}%] は存在しません"
+                
+
+tab complete of "/projectile":
+    set tab completions for position 1 to "reload", "create", "cast" and "list"
+    set tab completions for position 2 to node keys "" of "proj" without string checks
+
+
+
+function defineProjectile(id: text):
+    setYML("proj", "%{_id}%.damage", 1)
+    setYML("proj", "%{_id}%.distance", 10)
+    setYML("proj", "%{_id}%.speed", 1)
+    setYML("proj", "%{_id}%.complement", 1)
+    setYML("proj", "%{_id}%.acceleration", v(0, 0, 0))
+    setYMLList("proj", "%{_id}%.launch.particles", ("flame, 4, 0.5 0.5 0.5, 0"))
+    setYMLList("proj", "%{_id}%.trail.particles", ("flame, 4, 0.5 0.5 0.5, 0"))
+    setYMLList("proj", "%{_id}%.impact.particles", ("flame, 4, 0.5 0.5 0.5, 0"))
+    setYMLList("proj", "%{_id}%.launch.sounds", ("entity.generic.explode, 1"))
+    setYMLList("proj", "%{_id}%.impact.sounds", ("entity.generic.explode, 1"))
+    save yml "proj"
+function projectile(p: player, id: text):
+    set {_l} to {_p}'s head
+    set {_v} to vector from yaw {_p}'s yaw and pitch {_p}'s pitch
+    set {_d} to getYML("proj", "%{_id}%.damage")
+    set {_d} to getYML("proj", "%{_id}%.distance")
+    set {_s} to getYML("proj", "%{_id}%.speed")
+    set {_c} to getYML("proj", "%{_id}%.complement")
+    set {_a} to getYML("proj", "%{_id}%.acceleration")
+    strParticle({_l}, getYMLList("proj", "%{_id}%.launch.particles"))
+    strSound({_l}, getYMLList("proj", "%{_id}%.launch.sounds"))
+    set standard length of {_v} to {_s}/{_c}
+    set {_t} to ceil({_d}/{_s})
+    loop {_t} times:
+        loop {_c} times:
+            set {_l} to {_l}~{_v}
+            add {_a} to {_v}
+            strParticle({_l}, getYMLList("proj", "%{_id}%.trail.particles"))
+            loop entities in radius 3 around {_l}:
+                getMythicID(loop-entity) is set 
+                make {_p} damage loop-entity by {_dm}
+        wait a tick
+    strParticle({_l}, getYMLList("proj", "%{_id}%.impact.particles"))
+    strSound({_l}, getYMLList("proj", "%{_id}%.impact.sounds"))
+right click:
+    projectile(player, 1, 10, 1, 1, (flame, crit), v(0, -0.1, 0))
+
+function strSound(l: location, s: texts):
+    loop {_s::*}:
+        set {_p::*} to split loop-value at ", "
+        set {_so} to {_p::1}
+        set {_pi} to {_p::2} parsed as a number
+        play sounds {_so} in ambient category at volume 1 and pitch {_pi} at {_l}
+
+function strParticle(l: location, s: texts):
+    loop {_s::*}:
+        set {_p::*} to split loop-value at ", "
+        set {_pt} to {_p::1} parsed as particle
+        set {_am} to {_p::2} parsed as a int
+        set {_of::*} to {_p::3} parsed as "%number% %number% %number%"
+        set {_of} to v({_of::1}, {_of::2}, {_of::3})
+        set {_ex} to {_p::4} parsed as a int
+        make {_am} {_pt} at {_l} with offset {_of} with extra {_ex} with force
+
+right click with stick:
+    tag "proj" of nbt of player's tool is set
+    projectile(player, (tag "proj" of nbt of player's tool))

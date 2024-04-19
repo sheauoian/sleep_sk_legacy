@@ -1,0 +1,142 @@
+options:
+    yml: {_id}
+
+command /quest [<text>] [<text>] [<text>] [<text>]:
+    trigger:
+        set {_p} to player
+        if arg-1 is "cancel":
+            cancelQuest({_p}) is true:
+                send "&7任務を中断しました"
+            else:
+                send "&7任務を受注していません"
+            stop
+        else if {_} is "status":
+            if {PQ::%{_u}%} is not set:
+                send "任務を受注していません"
+                stop
+            loop {PQ::%{_u}%::*}:
+                send "%loop-index%: %loop-value%"
+            stop
+        
+        {_p} is not op:
+            send "&c権限がありません"
+            stop
+
+        set {_u} to player's uuid
+        set {_} to arg-1
+        set {_id} to "q_%arg-2%"
+        set {_at} to arg-3
+
+        if {_} is "create":
+            {_id} is set:
+                load yml "db/quests/%{_id}%" as {@yml}
+                execute player command "/quest at %arg-2% 1"
+        else if yml {@yml} is loaded:
+            if {_} is "save":
+                save yml {@yml}
+            else if {_} is "tome":
+                updateQuest(player, {_id}, ({_at} ? "1"))
+            else if {_} is "at":
+                {_at} is set
+                set yaml value "%{_at}%.target" from {@yml} to player's location
+                set yaml value "%{_at}%.info" from {@yml} to "テストクエスト"
+                set yaml value "%{_at}%.lore" from {@yml} to "テスト"
+                set yaml value "%{_at}%.reward.type" from {@yml} to "normal"
+                set yaml list "%{_at}%.reward.item" from {@yml} to air
+            else if {_at} is set:
+                if {_} is "target":
+                    set yaml value "%{_at}%.target" from {@yml} to player's location
+                else if {_} is "info":
+                    arg-4 is set:
+                        set yaml value "%{_at}%.info" from {@yml} to arg-4
+                        set {_} to yaml value "%{_at}%.info" from {_id}
+                        send "変更しました: %{_}%"
+                    else:
+                        set {_} to yaml value "%{_at}%.info" from {_id}
+                        send "現在: %{_}%"
+                else if {_} is "lore":
+                    set yaml value "%{_at}%.lore" from {@yml} to arg-4
+                else if {_} is "reward_type":
+                    set yaml value "%{_at}%.reward.type" from {@yml} to arg-4
+                else if {_} is "reward_item":
+                    if arg-4 starts with "add":
+                        add player's tool to yaml list "%{_at}%.reward.item" from {@yml}
+                    else if arg-4 starts with "remove":
+                        set {_args::*} to split arg-4 at " "
+                        set {_l::*} to yaml list "%{_at}%.reward.item" from {@yml}
+                        delete {l::%{_args::2}%}
+                        set yaml list "%{_at}%.reward.item" from {@yml} to {_l::*}
+                    else if arg-4 starts with "list":
+                        set {_l::*} to yaml list "%{_at}%.reward.item" from {@yml}
+                        loop {_l::*}:
+                            send "[%loop-index%] %loop-value%"
+            else:
+                send "Quest[&b%{_id}%] の段階[%{_at}%]は存在しません"
+        else:
+            send "&7Quest[%{_id}%]のyamlがロードされていません"
+
+function cancelQuest(p: player) :: boolean:
+    set {_u} to {_p}'s uuid
+    {PQ::%{_u}%} is set:
+        delete {PQ::%{_u}%::*}
+        delete {PQ::%{_u}%}
+        questSidebar({_p})
+        return true
+    return false
+
+function updateQuest(p: player, id: text, at: text):
+    set {_u} to {_p}'s uuid
+    set {PQ::%{_u}%} to {_id}
+    set {PQ::%{_u}%::At} to {_at}
+    set {PQ::%{_u}%::Target} to yml value "%{_at}%.target" from {@yml}
+    set {PQ::%{_u}%::Info} to yml value "%{_at}%.info" from {@yml}
+    Sound2({_p}, "block.note_block.pling")
+    questSidebar({_p})
+
+function questSidebar(p: player):
+    set {_u} to {_p}'s uuid
+    {PQ::%{_u}%} is set:
+        set line 7 of {_p}'s scoreboard to "&6&l≫ &f任務「%{PQ::%{_u}%::Info}%」"
+    else:
+        set line 7 of {_p}'s scoreboard to "&7&l≫ &f任務を受注していません"
+        set line 6 of {_p}'s scoreboard to "&7  - &f/quest"
+
+
+every a tick:
+    loop all players:
+        set {_p} to loop-player
+        set {_u} to {_p}'s uuid
+        {PQ::%{_u}%::Target} is set:
+            set {_id} to "%{_p}%_main"
+            {_p}'s world is not {PQ::%{_u}%::Target}'s world:
+                set line 6 of {_p}'s scoreboard to "&7  - &c×"
+                continue
+            set {_v} to vector from loop-player's location to {PQ::%{_u}%::Target}
+            set {_v}'s pitch to 0
+            set {_dis} to ceil({_v}'s standard length - 5)
+            if {_dis} <= 1:
+                set line 6 of {_p}'s scoreboard to "&7  - &f地点に到達&fしました"
+            else:
+                set {_v2} to vector from yaw yaw of loop-player and pitch 0
+                set {_deg} to mod(atan2({_v}'s z, {_v}'s x) - atan2({_v2}'s z, {_v2}'s x), 360)
+                set {_ind} to mod(floor(({_deg}+22.5)/45), 8)+1
+                set {_dir} to {DirectionMark::%{_ind}%}
+                set line 6 of {_p}'s scoreboard to "&7  - &f%{_dis}%m %{_dir}%"
+
+load:
+    set {DirectionMark::*} to split "↑↖←↙↓↘→↗" at ""
+
+load:
+    loop files in dir "db/quests/":
+        set {_} to name of file loop-value
+        yml {_} is loaded:
+            save yml name of file loop-value
+        load yml loop-value as {_}
+
+chat:
+    set message to mini message from message
+
+command /displayname <text>:
+    permission: op
+    trigger:
+        set displayname of player's tool to mini message from arg

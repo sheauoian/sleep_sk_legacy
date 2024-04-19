@@ -1,0 +1,19 @@
+command /crystal_buy <player> <int>:
+    permission: op
+    trigger:
+        set {_p} to arg-1
+        set {_u} to {_p}'s uuid
+        add arg-2 to {P::%{_u}%::Crystal}
+        send "&7" to {_p}
+        wait a tick
+        send "&f» %{P::%{_u}%::Crystal}%個&7のクリスタルを持っています。%nl%&a" to {_p}
+# 1. ワープ開放時(15)
+# 2. パズル初クリア時{Easy: 10, Normal: 15, Hard: 20}
+function giveCrystal(p: player, n: int, by: text = ""):
+    {_by} is not "":
+        send "&f+%{_n}% &bクリスタル &7(%{_by}%&7)" to {_p}
+    else:
+        send "&f+%{_n}% &bクリスタル" to {_p}
+    Sound2({_p}, "entity.experience_orb.pickup")
+    set {_u} to {_p}'s uuid
+    add {_n} to {P::%{_u}%::Crystal}

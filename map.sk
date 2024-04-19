@@ -1,0 +1,106 @@
+right click on furnace:
+    cancel event
+    set {_p} to player
+    set {_u} to player's uuid
+    set {_inv} to inventory of event-block
+    inventory title of {_inv} is "_1":
+        {f::%{_u}%.1} >= 5:
+            send "&7今日はもうできないっぽいです" to {_p}
+            stop
+        add 1 to {f::%{_u}%.1}
+        chance of 80%:
+            set {_} to {P::%{_u}%::Dollar}*0.2
+            add {_} to {P::%{_u}%::Dollar}
+            Sound2(player, "entity.player.levelup", 2)
+            send "&b+%{_}% &eゴールド" to {_p}
+        else:
+            set {_} to {P::%{_u}%::Dollar}*0.5
+            remove {_} from {P::%{_u}%::Dollar}
+            Sound2(player, "entity.villager.death")
+            send "&c-%{_}% &eゴールド" to {_p}
+        send "&7残り %5 - {f::%{_u}%.1}%&7回" to {_p}
+load:
+    set {_} to now formatted with "yyMMdd"
+    {Date} is not {_}
+    set {Date} to {_}
+    delete {f::*}
+
+every 10 minutes:
+    set {_} to now formatted with "yyMMdd"
+    {Date} is not {_}
+    set {Date} to {_}
+    delete {f::*}
+
+
+plate:
+    set {_l} to (location of event-block ~ v(0, -1, 0))
+    block at {_l} is bone block
+    redstone power of event-block is 0
+    set {_u} to player's uuid
+    loop regions at {_l}:
+        "%loop-region%" contains "bpuz_"
+        set {_r} to loop-region
+        exit a loop
+    {_r} is set
+    set {_id} to "%{_r}%"
+    replace " in world " with "." in {_id}
+    if {Bpuz::%{_id}%} is set:
+        {Bpuz::%{_id}%} is not player
+        distance between player and {Bpuz::%{_id}%} <= 30
+        {Bpuz::%{_id}%::Time} is less than 2 minutes ago
+        send "&f» &7このパスルは現在他の人がプレイしています!"
+        stop
+    set {Bpuz::%{_id}%} to player
+    set {Bpuz::%{_id}%::Time} to now
+    if {P::%{_u}%::LampPuzzle} is set:
+        set {_v} to vector from {P::%{_u}%::LampPuzzle} to {_l}
+        set {_d} to standard length of {_v}
+        standard length of {_v} = 0:
+            stop
+        if {_v}'s x is not 0:
+            {_v}'s y + {_v}'s z is not 0
+            set {_skip} to 1
+        else if {_v}'s y is not 0:
+            {_v}'s z is not 0
+            set {_skip} to 1
+        {_skip} is not 1
+        set {_c} to {P::%{_u}%::LampPuzzle}
+        set {_lv} to {_v}
+        set standard length of {_lv} to 1
+        loop ceil({_d}) times:
+            set {_c} to {_c} ~ {_lv}
+            block at {_c} is white concrete:
+                block at ({_c}~{_lv}) is not black concrete
+                set {_skip} to 1
+                exit a loop
+            else if block at {_c} is not black concrete or bone block:
+                set {_skip} to 1
+                exit a loop
+            location of block at {_c} is {_l}
+            exit a loop
+        {_skip} is not 1
+        set {_c} to {P::%{_u}%::LampPuzzle}
+        loop ceil({_d}) times:
+            set {_c} to {_c} ~ {_lv}
+            block at {_c} is black concrete:
+                set block at {_c} to white concrete
+            wait a tick
+        set {P::%{_u}%::LampPuzzle} to {_l}
+
+        set {_end} to true
+        loop all blocks in {_r} where [input is black concrete]:
+            set {_end} to false
+            exit a loop
+        {_end} is true:
+            Sound2(player, "entity.player.levelup")
+            send "クリアしました!"
+            delete {Bpuz::%{_id}%}
+            if {PMapGim::%{_u}%::Bpuz.%{_id}%} is not set:
+                set {PMapGim::%{_u}%::Bpuz.%{_id}%} to now
+                giveCrystal(player, 10, "パズル初クリア報酬")
+        Sound2(player, "entity.chicken.egg", 2)
+        stop
+    set {P::%{_u}%::LampPuzzle} to {_l}
+    loop all blocks in {_r} where [input is white concrete]:
+        set block at loop-block to black concrete
+    Sound2(player, "entity.chicken.egg")

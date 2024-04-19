@@ -1,0 +1,52 @@
+function bLoc(l: location) :: location:
+    return location of block at {_l}
+function saveBlockV(b: item type, ind: text):
+    set {B::%{_ind}%} to "%{_b}%"
+function getBlockV(ind: text) :: item type:
+    if {B::%{_ind}%} is not set:
+        return air
+    return {B::%{_ind}%} parsed as a item type
+function randomVector(n: number = 1) :: vector:
+    set {_v} to vector(random number between -0.5 to 0.5, random number between -0.5 to 0.5, random number between -0.5 to 0.5)
+    set standard length of {_v} to {_n}
+    return {_v}
+function giveItem(p: player, i: item, type: int = 0):
+    if {_p} has enough space for {_i}:
+        give {_p} {_i}
+    else:
+        if {_type} is 1:
+            drop {_i} at {_p}
+function Debug(p: player, text: text):
+    metadata value "debug" of {_p} is 1
+    send "&7[Debug] &f%{_text}%" to {_p}
+command /debug:
+    permission: debug
+    trigger:
+        if metadata value "debug" of player is not 1:
+            set metadata value "debug" of player to 1
+            Debug(player, "デバッグモードになったよ!")
+        else:
+            Debug(player, "デバッグモードを解除したよ!")
+            set metadata value "debug" of player to 0
+function particle(l: location, v: visual effect, n: int, offset: number):
+    if {_offset} is 0:
+        set {_vec} to v(0, 0, 0)
+    loop {_n} times:
+        if {_offset} is not 0:
+            set {_vec} to random vector
+            set standard length of {_vec} to random number between 0 and {_offset}
+        show {_v} at {_l}
+
+function v(x: number, y: number, z: number) :: vector:
+    return vector({_x}, {_y}, {_z})
+
+function getPlayerV(p: player, length: int = 1) :: vector:
+    set {_l} to location of block 50 infront of {_p}
+    set {_pl} to location of block at {_p}'s head
+    set {_v} to normalized vector from {_pl} to {_l}
+    set standard length of {_v} to {_length}
+    return {_v}
+function right(v: vector) :: vector:
+    set {_v} to vector(-1 * z of {_v}, 0, x of {_v})
+    set vector length of {_v} to 1
+    return {_v}

@@ -1,0 +1,66 @@
+function sidebar(p: player):
+    set {_u} to {_p}'s uuid
+
+    set title of {_p}'s scoreboard to "&6SleepRPG"
+    # レベル・職業等 (9, 8)
+    playerSidebar({_p})
+    # クエスト (7, 6)
+    questSidebar({_p})
+    set line 5 of {_p}'s scoreboard to ""
+    set line 4 of {_p}'s scoreboard to ""
+    set line 3 of {_p}'s scoreboard to ""
+    # お金 (2, 1)
+    moneySidebar({_p})
+    set line 0 of {_p}'s scoreboard to ""
+
+join:
+    sidebar(player)
+load:
+    loop all players:
+        set {_p} to loop-player
+        sidebar({_p})
+
+function tab(p: player):
+    set {_u} to {_p}'s uuid
+    if {P::%{_u}%::TabColor2} is not set:
+        changeTabColor({_p}, 0.7, 135)
+    set {_} to {P::%{_u}%::TabColor}
+    set {_2} to {P::%{_u}%::TabColor2}
+    set {_ram} to "%free memory/max memory*100%%%"
+    set {_f::*} to {_}, "Server Status", "&7TPS - %tps%", "&7RAM - %{_ram}%" and "&7Ping - %{_p}'s ping%ms %nl%"
+    add "%{_2}%<st>                              </st></gradient>" to {_f::*}
+    set {_h} to mini message from "%{_2}%<st>                              </st></gradient>%nl%"
+    set {_f} to mini message from (join {_f::*} with nl) 
+    set tab header to {_h} and footer to {_f} for {_p}
+every 20 seconds:
+    loop all players:
+        tab(loop-player)
+        wait a tick
+function changeTabColor(p: player, s: number, g: int):
+    set {_u} to {_p}'s uuid
+    set {_} to random integer between 0 to 360
+    set {_c1} to hslToRgb({_}, {_s}, 0.8)
+    set {_c2} to hslToRgb(mod({_}+{_g}*2, 360), {_s}, 0.8)
+    set {P::%{_u}%::TabColor} to "<gradient:##%{_c1}%:##%{_c2}%>"
+    set {_c3} to hslToRgb(mod({_}+{_g}, 360), {_s}, 0.5)
+    set {P::%{_u}%::TabColor2} to "<gradient:##%{_c2}%:##%{_c3}%:##%{_c1}%>"
+    tab({_p}) 
+
+command /tabcolor [<number>] [<number>]:
+    trigger:
+        if arg-1 is set:
+            set {_s} to max(min(arg-1, 9.9), 0)/10
+            if arg-2 is set:
+                set {_g} to floor(max(min(90*arg-2/10, 90), 0))
+        changeTabColor(player, ({_s} ? 0.7), ({_g} ? 75))
+        set {_} to "<b>%{P::%player's uuid%::TabColor}%"
+        send mini message from "%{_}%Usage: /tabcolor [彩度(0~10)] [グラデーションの強度(0~10)]"
+
+
+function hslToRgb(h: int, s: number, l: number) :: string:
+    loop 3 times:
+        add 1 to {_}
+        set {_k} to mod(({_}-1)*8 - {_h}/30, 12)
+        set {_a} to {_s} * min({_l}, 1 - {_l})
+        set {_f::%{_}%} to floor(({_l} - {_a} * max(-1, min({_k} - 3, 9 - {_k}, 1)))*256)
+    return convert rgb {_f::1}, {_f::3}, {_f::2} to hex

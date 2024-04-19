@@ -1,0 +1,44 @@
+# シルバーフィッシュ
+silverfish enter:
+    cancel event
+silverfish exit:
+    cancel event
+right click:
+    player's tool is armor
+    cancel event
+command /_eqtest:
+    permission: op
+    trigger:
+        set slot 39 of player's inventory to stone
+command /equipment:
+    trigger:
+        set {_} to 39
+        loop 3 times:
+            player has enough space for slot {_} of player's inventory:
+                give player slot {_} of player's inventory
+                set slot {_} of player's inventory to air
+                remove 1 from {_}
+            else:
+                send "&7インベントリに空きスペースを確保してください"
+inventory click:
+    clicked item is armor
+    "%click type%" contains "shift"
+    cancel event
+on bed enter:
+    set {_} to 3
+    wait a tick
+    loop 3 times:
+        player is not sleeping:
+            stop
+        send "のこり %{_}%" to player
+        remove 1 from {_}
+        wait a second
+    player is not sleeping:
+        stop
+    send "のこり 0" to player
+    set time of player's world to 6:00
+right click on anvil:
+    player's gamemode is not creative
+    cancel event
+explode:
+    cancel event

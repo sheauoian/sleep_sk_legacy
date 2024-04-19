@@ -1,0 +1,166 @@
+command /jobgacha [<text>] [<int>]:
+    permission: op
+    trigger:
+        set {_id} to arg-1 ? "normal"
+        set {_} to (arg-2) ? 1
+        jobGacha(player, {_id}, {_})
+command /gatyagive <player> <int>:
+    permission: op
+    trigger:
+        set {_u} to arg-1's uuid
+        add arg-2 to {P::%{_u}%::GatyaTicket} 
+        send "%player% から 10連ガチャ ×%arg-2% もらったので &e/gatyatest &fでひけます" to arg-1
+
+command /gatyatest:
+    trigger:
+        set {_u} to player's uuid
+        {P::%{_u}%::GatyaTicket} >= 1
+        remove 1 from {P::%{_u}%::GatyaTicket} 
+        jobGacha(player, "normal", 10)
+function jobGacha(p: player, id: text, n: int = 1):
+    set {_U} to {_p}'s uuid
+    if {_n} = 10:
+        set {_4} to 1
+    if {_id} is "normal" or "weapon":
+        set {_Type} to {_id}
+    else:
+        set {_Type} to "event"
+    set {_Max} to 3
+    while (size of {_Result::*}) < {_n}:
+        add 1 to {_C}
+        add 1 to {P::%{_u}%::GachaPity.%{_Type}%}
+        if {P::%{_u}%::GachaPity.%{_Type}%} >= 61:
+            set {_Kakutei} to ({P::%{_u}%::GachaPity.%{_Type}%}-60)*500
+        else:
+            set {_Kakutei} to 6
+        set {_} to random integer between 1 to 10000
+        if {_} <= {_Kakutei}:
+            set {_Result} to 5
+            set {_Max} to 5
+            set {P::%{_u}%::GachaPity.%{_Type}%} to 0
+        else if {_} <= 510:
+            set {_Result} to 4
+            set {_Max} to max(4, {_Max})
+        else if {_4} is 1:
+            {_c} >= 4
+            chance of (({_c}-3) / {_n}):
+                set {_Result} to 4
+                set {_Max} to max(4, {_Max})
+                set {_4} to 0
+        {_Result} is -1:
+            set {_Result} to 3
+        add {_result} to {_Result::*}
+        set {_Result} to -1
+    set {_Item_::*} to cyan stained glass pane, purple stained glass pane and yellow stained glass pane
+    Sound2({_p}, "block.lever.click", 1)
+    create a gui with virtual chest with 2 rows named "キャラクターガチャ":
+        set {_S} to 2
+        loop {_Result::*}:
+            set {_} to loop-value
+            set {__} to {_} - 2
+            set {_Res} to random element out of {Gacha::%{_id}%::%{_}%::*}
+            make gui slot {_S} with glowing {_Item_::%{__}%} named "&f&l%{_Res}%"
+            if {_} is 4:
+                add 1 to {PJob::%{_u}%::%{_Res}%}
+            add 1 to {_S}
+            if {_S} = 7:
+                set {_S} to 11
+    open last gui to {_p}
+
+command /jobtotu <text> <int> <int> <text>:
+    permission: op
+    trigger:
+        if arg-4 is "clear":
+            delete {JobTotu::%arg-1%::%arg-2%::%arg-3%}
+        else:
+            set {JobTotu::%arg-1%::%arg-2%::%arg-3%} to "&7%colored arg-4%"
+command /jobset <text> <int>:
+    permission: op
+    trigger:
+        set {PJob::%player's uuid%::%arg-1%} to arg-2
+
+
+load:
+    set {Gacha::normal::5::*} to "jin", "mona", "diluc", "kokusei", "nana", "tighnali" and "disia"
+    loop {Job::*}:
+        add loop-index to {_4::*}
+    set {Gacha::normal::4::*} to {_4::*}
+    set {Gacha::normal::3::*} to "hosi3"
+
+    delete {MagicDamagesource::*}
+
+quit:
+    delete {MagicDamagesource::%player%}
+
+function magicDamage(p: player, v: entity, c: number = -1, r: number = 1):
+    {_v} is alive
+    {_v} has ai
+    set {_u} to {_p}'s uuid
+    if {_c} < 0:
+        set {_c} to isCrit({_p})
+    set {_d} to {_r} * ({Pstat::%{_u}%::magic_attack} * max(1, {Pstat::%{_u}%::crit}/100*{_c}))
+    damage {_v} by ({_d}/5) with fake cause magic
+
+function isMonster(e: entity) :: boolean:
+    "zombie wither skeleton cave spider creeper endermen" contains "%type of {_e}%":
+        {_e} is alive
+        return true
+    return false
+
+join:
+    set {_p} to player
+    set {_u} to player's uuid
+    delete {PJobStat::%{_u}%::AtkP::*}
+right click:
+    set {_p} to player
+    set {_u} to player's uuid
+    line 1 of lore of {Pw::%{_u}%::weapon} is line 1 of lore of {_p}'s tool
+    {P::%{_u}%::Job} is "warrior":
+        skillCheck({_p}, "warrior_1", 2, 1) is true
+        set level of {_p} to {P::%{_u}%::Mana}
+        set {_v} to getPlayerV({_p})
+        set {_v}'s standard length to 2
+        set {_l} to {_p}'s head location ~ {_v}
+        Sound2({_p}, "entity.player.attack.sweep")
+        loop 3 times:
+            morkazsk activate 2 of particle "SWEEP_ATTACK":1 offset by 0.5, 0.1, 0.5 at {_l}
+            morkazsk activate 2 of particle "CLOUD":0 offset by 0.5, 0.1, 0.5 at {_l}
+            loop all entities in radius 2.2 around {_l} where [isMonster(input) is true]:
+                magicDamage({_p}, loop-entity)
+                stop
+            set {_l} to {_l} ~ {_v}
+        set {P::%{_u}%::Hp} to min({Pstat::%{_u}%::hp}, {P::%{_u}%::Hp} + ({Pstat::%{_u}%::hp}*({PJob::%{_u}%::None::Heal}*0.01+0.1)+10))
+        if {PJob::%{_u}%::Warrior} >= 3:
+            skillCheck({_p}, "none_1_1", 0, 8) is true
+            set {PJobStat::%{_u}%::physic_attack::warrior_1_1} to {Pstat::%{_u}%::physic_attack}*0.2
+            set {PJobStat::%{_u}%::magic_attack::none_1_1} to {Pstat::%{_u}%::magic_attack}*0.2
+            wait 5 seconds
+            delete {PJobStat::%{_u}%::physic_attack::none_1_1}
+            delete {PJobStat::%{_u}%::magic_attack::none_1_1}
+    {P::%{_u}%::Job} is "none":
+        set {_cT} to 15
+        if {PJob::%{_u}%::None} >= 6:
+            chance of 70%:
+                set {_cT} to 5
+        skillCheck({_p}, "none_1", 15, {_cT}, true, "ヒール") is true
+        Sound2({_p}, "entity.witch.drink", 1.5)
+        morkazsk activate 10 of particle "HEART":1 offset by 2, 1, 2 at {_p}
+        set {P::%{_u}%::Hp} to min({Pstat::%{_u}%::hp}, {P::%{_u}%::Hp} + ({Pstat::%{_u}%::hp}*({PJob::%{_u}%::None::Heal}*0.01+0.1)+10))
+        if {PJob::%{_u}%::None} >= 3:
+            skillCheck({_p}, "none_1_1", 0, 8) is true
+            set {PJobStat::%{_u}%::physic_attack::none_1_1} to {Pstat::%{_u}%::physic_attack}*0.2
+            set {PJobStat::%{_u}%::magic_attack::none_1_1} to {Pstat::%{_u}%::magic_attack}*0.2
+            wait 5 seconds
+            delete {PJobStat::%{_u}%::physic_attack::none_1_1}
+            delete {PJobStat::%{_u}%::magic_attack::none_1_1}
+        updatePlayerHealth({_p})
+load:
+    delete {Job::*}
+    set {Job::None} to "冒険者"
+    set {Job::None::Item} to grass block
+    set {Job::Warrior} to "剣士"
+    set {Job::Warrior::Item} to iron sword
+    set {Job::Archer} to "弓士"
+    set {Job::Archer::Item} to bow
+    set {Job::Miner} to "採掘師"
+    set {Job::Miner::Item} to iron pickaxe

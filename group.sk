@@ -1,0 +1,6 @@
+command /grouplist:
+    permission: op
+    trigger:
+        send "List: %all groups%"
+        loop all players:
+            send "&7 - %loop-player%: %loop-player's group%"

@@ -1,0 +1,108 @@
+options:
+    gui: "武器・装備の設定"
+    guilvlup: "武器・装備の強化"
+    sub: "&7 [ サブステータス枠 ]"
+
+command /weapon [<text>] [<text>] [<text>] [<text>]:
+    permission: sk.item
+    trigger:
+        set {_p} to player
+        if arg-1 is "list":
+            loop {Weapon::*}:
+                set {_} to text component of "[%loop-index%] %loop-value%"
+                set hover event of {_} to hover event showing "&7&n/weapon info %loop-index%"
+                set click event of {_} to click event to run command "/weapon info %loop-index%"
+                send text component {_} to {_p}
+        else if arg-2 is set:
+            set {_id} to arg-2
+            set {Weapon::%{_id}%} to {_id}
+            if arg-1 is "info":
+                cmdWeaponSuggest({_p}, {_id}, "power", 10)
+                cmdWeaponSuggest({_p}, {_id}, "main", 16)
+                cmdWeaponSuggest({_p}, {_id}, "main.amount", 3)
+                cmdWeaponSuggest({_p}, {_id}, "main.ispercent", 0)
+                cmdWeaponSuggest({_p}, {_id}, "type", "sword")
+                cmdWeaponSuggest({_p}, {_id}, "rarity", 1)
+                cmdWeaponSuggest({_p}, {_id}, "name", "木のナイフ")
+                cmdWeaponSuggest({_p}, {_id}, "model", "wood_knife")
+                cmdWeaponSuggest({_p}, {_id}, "series", "none")
+                cmdWeaponSuggest({_p}, {_id}, "m1", "none")
+                cmdWeaponSuggest({_p}, {_id}, "m2", "none")
+                cmdWeaponSuggest({_p}, {_id}, "m3", "none")
+                cmdWeaponSuggest({_p}, {_id}, "m4", "none")
+                cmdWeaponSuggest({_p}, {_id}, "itemtype", "none")
+            else if arg-1 is "set":
+                arg-4 is set
+                set {_num} to arg-4 parsed as a number
+                if {_num} is set:
+                    send "値を &b%{_num}% &fに設定しました"
+                    set {Weapon::%{_id}%::%arg-3%} to {_num}
+                else:
+                    send "値を &6%colored arg-4% &fに設定しました"
+                    set {Weapon::%{_id}%::%arg-3%} to colored arg-4
+            else if arg-1 is "get":
+                if {WType::%{Weapon::%{_id}%::Type}%::Type} is "weapon":
+                    set {_type} to "weapon"
+                else:
+                    set {_type} to {Weapon::%{_id}%::Type}
+                
+                set {_num} to arg-3 parsed as a number
+                send "Type: %{_type}%"
+                if {_num} is set:
+                    loop {_num} times:
+                        addArsenal(player, generateWeapon({_id}), {_type}) is false:
+                            stop
+                else:
+                    addArsenal(player, generateWeapon({_id}), {_type})
+            
+            else if arg-1 is "seed":
+                set {_i} to getWeaponSample({_id})
+                give player {_i}
+                
+                
+function cmdWeaponSuggest(p: player, id: text, status: text, initial: object):
+    if {Weapon::%{_id}%::%{_status}%} is not set:
+        set {Weapon::%{_id}%::%{_status}%} to {_initial}
+    set {_val} to {Weapon::%{_id}%::%{_status}%}
+    set {_} to text component of "%{_status}% -> %{_val}%"
+    set hover event of {_} to hover event showing "&7&n/weapon set %{_id}% %{_status}% %{_val}%"
+    set click event of {_} to click event to suggest command "/weapon set %{_id}% %{_status}% %{_val}%"
+    send text component {_} to {_p}
+
+command /model <text>:
+    permission: sk.item
+    trigger:
+        add nbt of "{model:%arg%}" to nbt of player's tool
+
+load:
+    delete {WeaponType::*}
+    delete {WeaponName::*}
+    delete {WeaponTypeItems::*}
+    delete {WeaponStatusType::*}
+
+#
+# defineWeaponType(ID, 名称, 記号, アイテム, 武器/防具タイプ(weapon, armor))
+#
+
+
+function defineWeaponType(id: text, name: text, item: item, type: text = "weapon"):
+    set {WType::%{_id}%} to {_name}
+    set {WType::%{_id}%::Item} to {_item}
+    set {WType::%{_id}%::Type} to {_type}
+
+load:
+    loop {WType::*}:
+        delete {WType::%loop-index%}
+    delete {WType::*}
+
+    defineWeaponType("sword", "剣", wooden sword)
+    defineWeaponType("bow", "弓", bow)
+    defineWeaponType("gun", "銃", iron hoe)
+    defineWeaponType("catalyst", "法器", iron hoe)
+
+    defineWeaponType("helmet", "頭装備", leather cap, "equipment")
+    defineWeaponType("chestplate", "胸装備", leather tunic, "equipment")
+    defineWeaponType("leggings", "脚装備", leather pants, "equipment")
+    defineWeaponType("boots", "靴装備", leather boots, "equipment")
+
+    set {Rarity::*} to "★", "★★", "★★★", "★★★★", "★★★★★" and "★★★★★★"

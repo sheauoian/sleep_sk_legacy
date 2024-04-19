@@ -1,0 +1,160 @@
+command /nest [<text>] [<text>] [<text>]:
+    permission: map
+    trigger:
+        set {_p} to player
+        set {_} to arg-1
+        set {_id} to arg-2
+        {_id} is set:
+            if {_} is "set":
+                if {_id} is set:
+                    set {Nest::%{_id}%} to location of {_p}'s target block
+                    send "Target Blockの座標を宝箱の地点に設定しました"
+            else if arg-1 is "add":
+                set {_ind} to amount of {NestEnemy::%{_id}%::*}
+                set {NestEnemy::%{_id}%::%{_ind}%} to arg-3
+                set {NestEnemy::%{_id}%::%{_ind}%::L} to {_p}'s location
+                send "[%{_id}%:%{_ind}%] %{NestEnemy::%{_id}%::%{_ind}%}% を追加しました"
+            else if arg-1 is "remove":
+                set {_ind} to arg-3
+                send "[%{_id}%:%{_ind}%] %{NestEnemy::%{_id}%::%{_ind}%}% を削除しました"
+                delete {NestEnemy::%{_id}%::%{_ind}%::L}
+                delete {NestEnemy::%{_id}%::%{_ind}%}
+            else if arg-1 is "droptable":
+                arg-3 is not set:
+                    send "%{Nest::%{_id}%::DropTable}%"
+                    stop
+                set {Nest::%{_id}%::DropTable} to arg-3
+                send "せっていしました"
+
+            else if arg-1 is "test":
+                Nest(player, {_id})
+            
+            else if arg-1 is "open":
+                openNestChest(player, {_id})
+            else if arg-1 is "stop":
+                stopNest({_id})
+        else:
+            send "/nest set <ID> -> TargetBlockの座標を宝箱の地点に設定する"
+            send "/nest add <ID> -> TargetBlockの座標を宝箱の地点に設定する"
+            send "/nest set <ID> -> TargetBlockの座標を宝箱の地点に設定する"
+            send "/nest set <ID> -> TargetBlockの座標を宝箱の地点に設定する"
+            send "/nest set <ID> -> TargetBlockの座標を宝箱の地点に設定する"
+            send "/nest set <ID> -> TargetBlockの座標を宝箱の地点に設定する"
+
+command /nestplay <player> <text>:
+    permission: op
+    trigger:
+        set {_p} to arg-1
+        set {_u} to {_p}'s uuid
+        set {_id} to arg-2
+        {_p} has permission "op":
+            {_p}'s tool is stone
+            Nest(arg-1, {_id})
+            stop
+        {PNest::%{_u}%::%{_id}%} is set:
+            set {_d} to difference between {PNest::%{_u}%::%{_id}%} and now
+            {_d} is not greater than 24 hours
+            send "&7%difference between 24 hour and {_d}% &7後に再度挑戦できます" to {_p}
+            stop
+        {Nesting::%{_id}%::Time} is set:
+            difference between {Nest::%{_id}%::Time} and now is not greater than 3 minutes
+            send "&7暫くお待ちください" to {_p}
+            stop
+        Nest({_p}, {_id})
+function checkNestChest(p: player, id: text) :: boolean:
+    set {_u} to {_p}'s uuid
+    {_p}'s tool is command block:
+        {_p} is op
+        return true
+    {PNest::%{_u}%::%{_id}%_chest} is not 1:
+        return false
+    difference between {PNest::%{_u}%::%{_id}%} and now is greater than 24 hours:
+        return false
+    return true
+rightclick on chest:
+    name of inventory of clicked block contains "nestchest":
+        cancel event
+        set {_p} to player
+        set {_id::*} to split name of inventory of clicked block at " "
+        set {_id} to {_id::2}
+        set {_u} to {_p}'s uuid
+        if checkNestChest({_p}, {_id}) is false:
+            Sound2({_p}, "block.chest.locked", 1.12)
+            stop
+        delete {PNest::%{_u}%::%{_id}%_chest}
+        openNestChest({_p}, {_id})
+
+function openNestChest(p: player, id: text):
+    set {_Drop::*} to split {Nest::%{_id}%::DropTable} at ","
+    loop {_Drop::*}:
+        set {_T::*} to split loop-value at ";"
+        add {_T::2} to {_%{_T::1}%::*}
+    set {_S::*} to integers between 0 to 26
+    set {_Inv} to chest with 3 rows named "&8« &lトレジャーチェスト &8»"
+    {_M::*} is set:
+        loop 6 times:
+            set {_s} to random element out of {_S::*}
+            remove {_s} from {_S::*}
+            set {_am} to random integer between 2 to 4
+            set {_id_} to random element out of {_M::*}
+            set {_I} to {_am} of getMaterialItem({_p}, {_id_})
+            set slot {_s} of {_Inv} to {_I}
+    {_W::*} is set:
+        loop 2 times:
+            set {_s} to random element out of {_S::*}
+            remove {_s} from {_S::*}
+            set {_id_} to random element out of {_W::*}
+            set {_I} to generateWeapon({_id_})
+            set slot {_s} of {_Inv} to {_I}
+    {_I::*} is set:
+        loop 3 times:
+            set {_s} to random element out of {_S::*}
+            remove {_s} from {_S::*}
+            set {_sid} to random element out of {_I::*}
+            set {_I} to {SkItem::%{_sid}%}
+            set slot {_s} of {_Inv} to {_I}
+    open {_Inv} to {_p}
+
+
+tab complete of "/nest":
+    set tab completions for position 1 to "set", "add", "remove", "test" and "list"
+    loop {Nest::*}:
+        add loop-index to {_a::*}
+    {_a::*} is set
+    set tab completions for position 2 to {_a::*}
+
+function stopNest(id: text):
+    loop all entities in radius 50 around {Nest::%{_id}%} where [metadata "nest" of input is {_id}]:
+        set metadata "nest" of loop-entity to "_removed_"
+        remove loop-entity
+    send "%{_id}% Cancelled!" to {Nesting::%{_id}%::Player}
+    delete {Nesting::%{_id}%::Player}
+    delete {Nesting::%{_id}%::Time}
+function Nest(p: player, id: text):  
+    set {Nesting::%{_id}%} to 0
+    loop {NestEnemy::%{_id}%::*}:
+        set {_l} to {NestEnemy::%{_id}%::%loop-index%::L}
+        set {_w} to world of {NestEnemy::%{_id}%::%loop-index%::L}
+        set {_am} to spawn mythicmob "%loop-value%" at location {_l} in world "%{_w}%"
+        set {_e} to entity of activemob {_am}
+        set metadata "nest" of {_e} to {_id}
+        add 1 to {Nesting::%{_id}%}
+    set {Nesting::%{_id}%::Player} to {_p}
+    set {Nesting::%{_id}%::Time} to now
+on death:
+    victim instanceof activemob
+    set {_am} to activemob of victim
+    set {_e} to victim
+    metadata "nest" of {_e} is set
+    set {_id} to metadata "nest" of {_e}
+    remove 1 from {Nesting::%{_id}%}
+    set {_p} to {Nesting::%{_id}%::Player}
+    {Nesting::%{_id}%} <= 0:
+        set {_u} to {_p}'s uuid
+        send "クリアしました!" to {_p}
+        set {PNest::%{_u}%::%{_id}%} to now
+        set {PNest::%{_u}%::%{_id}%_chest} to 1
+        delete {Nesting::%{_id}%::Time}
+    else:
+        send "残り %{Nesting::%{_id}%}%体" to {_p}
+        

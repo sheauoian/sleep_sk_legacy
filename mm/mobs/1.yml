@@ -1,0 +1,47 @@
+zobi:
+  Type: ZOMBIE
+  Display: 'ゾンビ'
+  Health: 40
+  Damage: 2
+pudding:
+  Type: SILVERFISH
+  Health: 6
+  Damage: 8
+  Skills:
+  - skill{s=pudding} @self ~onTimer:60 0.6
+  Options:
+    PreventOtherDrops: true
+    PreventRandomEquipment: true
+logman:
+  Type: Zombie
+  Display: '原木ゾンビ'
+  Health: 80
+  Damage: 8
+  Equipment:
+  - LogSkull HEAD
+  Options:
+    MovementSpeed: 0.26
+stonezobi:
+  Type: Zombie
+  Display: '石ゾンビ'
+  Health: 500
+  Damage: 10
+  Equipment:
+  - STONE HEAD
+  Options:
+    MovementSpeed: 0.35
+redsket:
+  Type: Skeleton
+  Display: '赤スケルトン'
+  Health: 200
+  Damage: 50
+  Equipment:
+  - REDSTONE_BLOCK HEAD
+  - RedSketBow HAND
+  Options:
+    MovementSpeed: 0.45
+weakest:
+  Type: SLIME
+  Display: '最弱スライム'
+  Health: 10000
+  Damage: 10000

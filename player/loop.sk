@@ -1,0 +1,39 @@
+# 優先度低
+every 10 seconds:
+    loop all players:
+        set {_p} to loop-player
+        set {_u} to {_p}'s uuid
+        # Gamemode
+        {_p}'s gamemode is survival:
+            set {_p}'s gamemode to adventure
+        wait a tick
+# 優先度高
+every a second:
+    loop all players:
+        playerUpdate(loop-player)
+
+function playerUpdate(p: player):
+    set {_u} to {_p}'s uuid
+
+    # RegionBarrier
+    if "%regions at {_p}'s location%" doesn't contain "active":
+        "%{_p}'s world%" is "fSiro"
+        {_p}'s y-loc >= 0
+        {_p}'s y-loc <= 255
+        {_p}'s gamemode is adventure
+        teleport {_p} to {P::%{_u}%::GroundPos}
+        set {_} to metadata "forcebarrier" of {_p}
+        remove 1 from {_}
+        send "&7この先は開発中です! (%{_}%&7)" to {_p}
+        {_} <= 0:
+            teleport {_p} to {Loc::forceTeleport}
+        else:
+            set metadata "forcebarrier" of {_p} to {_}
+    else:
+        set metadata "forcebarrier" of {_p} to 10
+    # Void TP
+    block at {_p}'s location~v(0, -0.2, 0) is solid:
+        set {P::%{_u}%::GroundPos} to {_p}'s location
+    # ActionBar + Health
+    {_p} is alive:
+        updatePlayerHealth({_p})

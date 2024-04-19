@@ -1,0 +1,91 @@
+options:
+    yml: "%{_p}%.arsenal.%{_type}%"
+
+function defineArsenalType(id: text, name: text, size: int):
+    set {ArsenalType::%{_id}%} to {_name}
+    set {ArsenalType::%{_id}%::size} to {_size}
+    delete {ArsenalType::%{_id}%::icon}
+
+load:
+    defineArsenalType("weapon", "武器", 900)
+    defineArsenalType("helmet", "頭防具", 450)
+    defineArsenalType("chestplate", "胸防具", 450)
+    defineArsenalType("leggings", "脚防具", 450)
+    defineArsenalType("boots", "靴防具", 450)
+
+command /arsenal:
+    permission: op
+    trigger:
+        open gui "arsenal" to player
+
+load:
+    create gui "arsenal" with virtual chest with 1 row named "強化する武器を選択してください":
+        make gui slot (integers between 0 to 9) with gray stained glass pane
+        make gui slot 0 with barrier named "&f戻る":
+            weaponLevelUpGui(player)
+        make gui slot 1 with iron sword named "武器":
+            arsenalInfo(player, "weapon")
+        make gui slot 2 with iron helmet named "頭防具":
+            arsenalInfo(player, "helmet")
+        make gui slot 3 with iron chestplate named "胸防具":
+            arsenalInfo(player, "chestplate")
+        make gui slot 4 with iron leggings named "脚防具":
+            arsenalInfo(player, "leggings")
+        make gui slot 5 with iron boots named "靴防具":
+            arsenalInfo(player, "boots")
+
+function arsenalInfo(p: player, type: text = "weapon", page: int = 0):
+    set {_u} to {_p}'s uuid
+    checkArsenal({_p}, {_type})
+    set {_size} to {ArsenalType::%{_type}%::size}
+    set {_maxpage} to ceil({_size}/45)
+    if {_page} is 0:
+        add 1 to {_page}
+    set {_title} to "&l « %{ArsenalType::%{_type}%}% »  &8[ %{_page}% / %{_maxpage}% ]"
+
+    set {_l::*} to values in yaml list "items" from {@yml}
+    set {_s} to 0
+    create a gui with virtual chest with 6 rows named {_title}:
+        make gui slot (integers between 0 to 53) with gray stained glass pane named "&7"
+        set {_index} to ({_page}-1)*45
+        loop 45 times:
+            add 1 to {_index}
+            {_l::%{_index}%} is set:
+                set {_i} to {_l::%{_index}%}
+                make gui slot {_s} with {_i}:
+                    delete {_l::%{_index}%}
+                    set yaml list "items" from {@yml} to {_l::*}
+                    set {_temp} to {P::%{_u}%::WeaponLvlUp}
+                    set {_temptype} to {P::%{_u}%::WeaponLvlUpType}
+                    set {P::%{_u}%::WeaponLvlUp} to {_i}
+                    set {P::%{_u}%::WeaponLvlUpType} to {_type}
+                    weaponLevelUpGui(player)
+                    addArsenal(player, {_temp}, {_temptype})
+                add 1 to {_s}
+        if {_page} > 1:
+            make gui slot 45 with paper named "前のページ":
+                remove 1 from {_page}
+                arsenalInfo(player, {_type}, {_page})
+        if {_page} < {_maxpage}:
+            make gui slot 53 with paper named "次のページ":
+                add 1 to {_page}
+                arsenalInfo(player, {_type}, {_page})
+        make gui slot 49 with barrier named "戻る":
+            open gui "arsenal" to player
+    open last created gui to {_p}
+
+function addArsenal(p: player, i: item, type: text = "weapon") :: boolean:
+    checkArsenal({_p}, {_type})
+    add {_i} to yml list "items" from {@yml}
+    return true
+function checkArsenal(p: player, type: text = "weapon"):
+    set {_u} to {_p}'s uuid
+    yml {@yml} isn't loaded:
+        load yml "db/players/%{_u}%/arsenal/%{_type}%.yml" as {@yml}
+quit:
+    set {_p} to player
+    loop indices of {ArsenalType::*}:
+        set {_type} to loop-value
+        yml {@yml} is loaded
+        save yml {@yml}
+        unload yml {@yml}

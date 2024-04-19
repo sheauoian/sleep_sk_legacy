@@ -1,0 +1,17 @@
+function Warp(p: player, id: text, skip: boolean = true, wait: timespan = 5 seconds):
+    set {_u} to {_p}'s uuid
+    set {P::%{_u}%::WarpCT} to now
+    set {P::%{_u}%::WarpWait} to {_wait}
+    if {_SkiP} is false:
+        set {_lp} to {_p}'s location
+        Sound2({_p}, "block.portal.trigger", 2)
+        set {_y} to {_p}'s yaw
+        loop 16 times:
+            wait 3 ticks
+            set {_Deg} to 22.5 * (loop-number) - {_y}
+            morkazsk spawn 1 of "end_rod" offset by 0, 0, 0 with extra 0 at {_lp} ~ v(sin({_Deg})*2, 1, cos({_Deg})*2)
+            distance between {_lp} and {_p}'s location >= 2
+            send "&cテレポートがキャンセルされました" to {_p}
+            stop
+    teleport {_p} to {Loc::%{_id}%}
+    Sound2({_p}, "entity.endermen.teleport", 1)

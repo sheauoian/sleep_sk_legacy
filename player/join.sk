@@ -1,0 +1,178 @@
+connect:
+    {White} is 1:
+        "%player%" is not "_not_ka_not_"
+        {Allow::*} doesn't contain "%player%":
+            kick player due to "&c» &7現在 Sleepに参加することが出来ません。"   
+join:
+    {P::%player's uuid%} is set:
+        set join message to "&7[ &e+ &7] &f%player%"
+    else:
+        set join message to "&7[ &d+ &7] &f%player%"
+    if {SpectatorMode} is true:
+        send "&7現在 観光モードが有効です"
+        wait 5 ticks
+        set {P::%player's uuid%::hp} to 10
+        set {Pstat::%player's uuid%::Hp} to 10
+        teleport player to {Loc::Tutorial}
+        set player's gamemode to spectator
+        stop
+    onJoin(player)
+    set {P::%player's uuid%::Joining} to 1
+load:
+    loop all players:
+        set {P::%loop-player's uuid%::Joining} to 1
+every 10 second:
+    if {SpectatorMode} is true:
+        loop all players:
+            set {_p} to loop-player
+            {_p} is not op
+            set {_p}'s gamemode to spectator
+command /spectator:
+    permission: op
+    trigger:
+        {SpectatorMode} is true:
+            set {SpectatorMode} to false
+            send "&7観光モードが無効です"
+        else:
+            set {SpectatorMode} to true
+            send "&7観光モードが有効です"
+command:
+    sender is a player
+    player is not op
+    {SpectatorMode} is true
+    send "&7現在使用できません"
+    cancel event
+
+
+function onJoin(p: player):
+    set {_u} to {_p}'s uuid
+    if {P::%{_u}%} is not set:
+        firstJoin({_p})
+    else:
+        if {P::%{_u}%} is not {_p}:
+            set {P::%{_u}%} to {_p}
+    sidebar({_p})
+    wait a tick
+    {_p}'s gamemode is survival
+    set {_p}'s gamemode to adventure
+function firstJoin(p: player):
+    set {_u} to {_p}'s uuid
+    set {P::%{_u}%} to {_p}
+    loop {_p}'s scoreboard tags:
+        loop-value contains "kinen:"
+        add loop-value to {_tags::*}
+    set {_p}'s scoreboard tags to {_tags::*}
+    {P::%{_u}%::vote} is set:
+        set {_Vote} to {P::%{_u}%::vote}
+        set {_VoteReward} to min(3, {P::%{_u}%::vote})
+    {P::%{_u}%::Crystal} is set:
+        set {_Crystal} to {P::%{_u}%::Crystal}
+    loop "", "Q", "Job", "Chara", "W", "Warp" and "MapGim":
+        delete {P%loop-value%::%{_u}%::*}
+    set {PJob::%{_u}%::None} to 1
+    set {P::%{_u}%::TabColor} to 10
+    set {P::%{_u}%::LastLoc} to {Loc::Tutorial}
+    resetPlayerStats({_p})
+    set food level of {_p} to 10
+    clear {_p}'s inventory
+    clear {_p}'s ender chest
+    set {_p}'s gamemode to adventure
+    set total experience of {_p} to 0
+    dir "db/players/%{_u}%/" exists:
+        delete dir "db/players/%{_u}%/"
+    loop loaded yml:
+        loop-value contains "%{_p}%"
+        delete yaml loop-value
+    checkDB({_p})
+    Tp({_p}, "first")
+    set {_sword} to generateWeapon("wooden_knife")
+    addArsenal({_p}, {_sword}, "weapon")
+    addArsenal({_p}, generateWeapon("bow"), "weapon")
+    delete {PW::%{_u}%::*}
+    set {PW::%{_u}%::weapon} to {_sword}
+    updatePlayerStatus({_p})
+    set {P::%{_u}%::hp} to {Pstat::%{_u}%::Hp}
+    updatePlayerHealth({_p})
+    wait a tick
+    loop {PBuy::%{_u}%::*}:
+        delete {PBuy::%{_u}%::%loop-index%}
+    set {P::%{_u}%::Job} to "none"
+    sidebar({_p})
+function resetPlayerStats(p: player, i: int = 0):
+    set {_u} to {_p}'s uuid
+    resetPlayerData({_u}, "dollar", 1000, {_i})
+    resetPlayerData({_u}, "health", 10, {_i})
+    resetPlayerData({_u}, "vote", 0, {_i})
+    resetPlayerData({_u}, "apple", 3, {_i})
+    resetPlayerData({_u}, "goldapple", 0, {_i})
+    resetPlayerData({_u}, "life", 3, {_i})
+    resetPlayerData({_u}, "lvl", 0, {_i})
+    resetPlayerData({_u}, "mana", 0, {_i})
+    resetPlayerData({_u}, "crystal", 0, {_i})
+    resetPlayerData({_u}, "essence", 0, {_i})
+function resetPlayerData(u: text, i: text, o: object, t: int = 0):
+    set {P::%{_u}%::%{_i}%} to {_o}
+command /onjoin:
+    permission: op
+    trigger:
+        onJoin(player)
+command /firstjoin:
+    permission: op
+    trigger:
+        firstJoin(player)
+
+
+# 退出時処理
+on quit:
+    set the quit message to ""
+    {P::%player's uuid%::Joining} is 1:
+        broadcast "&7[ &c- &7] &f%player%"
+        delete {P::%player's uuid%::Joining}
+
+# 全プレイヤーリセット
+command /resetallplayer:
+    permission: op
+    trigger:
+        delete {P::*}
+        loop all players:
+            firstJoin(loop-player)
+
+# サバイバル→アドベンチャー
+gamemode change to survival:
+    wait a tick
+    set player's gamemode to adventure
+
+# 入場規制
+command /white:
+    permission: op
+    trigger:
+        if {White} is not set:
+            set {White} to 0
+        set {White} to mod(1+{White}, 2)
+        {White} is 1:
+            broadcast "&c¶ &f入場規制がオンになりました。"
+            loop all players where [input is not op]:
+                {Allow::*} doesn't contain "%loop-player%"
+                kick loop-player
+        else:
+            broadcast "&a¶ &f入場規制がオフになりました。"
+command /allow <text>:
+    permission: op
+    trigger:
+        add arg to {Allow::*}
+        send "&a» &f%arg% &7の入場を許可しました"
+        send "現在: %{Allow::*}%"
+command /unallow <text>:
+    permission: op
+    trigger:
+        remove arg from {Allow::*}
+        send "&a» &f%arg% &7の入場許可を削除しました"
+        send "現在: %{Allow::*}%"
+tab complete of "/unallow":
+    set tab completions for position 1 to {Allow::*}
+command /allowlist:
+    permission: op
+    trigger:
+        send "&7：：：：： &f全 &l%amount of {Allow::*}%&f名 &7：：：：："
+        loop {Allow::*}:
+            send "&7 - &a%loop-value%"

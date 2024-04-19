@@ -1,0 +1,42 @@
+import:
+    io.lumine.mythic.bukkit.MythicBukkit
+    io.lumine.mythic.bukkit.BukkitAdapter
+
+command /hat:
+    trigger:
+        set {_g} to slot 39 of player's inventory
+        player's tool is not air:
+            set {_i} to player's tool
+            remove {_i} from player
+            set slot 39 of player's inventory to {_i}
+            give player {_g}
+        else if player has enough space for {_g}:
+            set slot 39 of player's inventory to air
+            give player {_g}
+command /mynbt:
+    permission: op
+    trigger:
+        set {_} to nbt of player
+        replace all "minecraft:" with "" in {_}
+        replace all """" with "" in {_}
+        set {_b::*} to split {_} at "recipes:["
+        set {_a::*} to split {_} at "isGuiOpen"
+        set {_} to "%{_b::1}% &4&l-&f %{_a::2}%"
+        send {_}
+load:
+    remove all recipes
+
+command /0:
+    trigger:
+        broadcast client brand of player
+command /j:
+    trigger:
+        send "%all types%"
+command /_soundtest_:
+    trigger:
+        set {_} to 180/8
+        set {_v} to vector from yaw player's yaw and pitch 0
+        rotate {_v} around y-axis by -90
+        loop 8 times:
+            set {_l} to player's location ~ {_v}
+            play sounds "block.anvil.land" in ambient category at volume 2 and pitch 2 at {_l}

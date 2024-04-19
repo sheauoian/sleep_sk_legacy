@@ -1,0 +1,53 @@
+function formedRegion(t: text, w: world = "") :: text:
+    if "%{_t}%" doesn't contain "in world":
+        return "%{_w}%.%{_t}%"
+    set {_a::*} to split {_t} at " in world "
+    return "%{_a::2}%.%{_a::1}%"
+
+spawn:
+    "%spawn reason%" is "spawn egg" or "default" or "customized" or "<none>":
+        stop
+    set {_l} to event-location
+    set {_dE::*} to item frame and dropped item
+    loop all entities in radius 20 around {_l}:
+        {_dE::*} doesn't contain loop-entity's type
+        loop-entity is not a player
+        add 1 to {_ae}
+    {_ae} >= 10:
+        cancel event
+        stop
+    set {_w} to event-world
+    if "%spawn reason%" is "natural":
+        cancel event
+    else if "%spawn reason%" is "mob spawner":
+        set {_id} to name of event-entity
+        {_id} is not set:
+            event-entity is pig
+            cancel event
+            stop
+        if {_id} contains "mm_":
+            cancel event
+            replace all "mm_" with "" in {_id}
+            spawnMM({_id}, {_l})
+            morkazsk activate 8 of particle "CLOUD":0 offset by 1, 1, 1 at {_l}
+            stop
+    else:
+        cancel event
+        stop
+
+command /spawner [<text>] [<text>] [<text>] [<text>] [<text>] [<text>] [<text>]:
+    permission: op
+    trigger:
+        if arg-6 is not set:
+            send "Usage: /spawner (mm_<MythicMobsのMobID>,sandbag_<Int>) <スポーン数> <スポーン半径> <最小スポーンカウント> <最大スポーンカウント> <検知半径> [<スポナー見た目>]"
+            stop
+        if arg-7 is not set:
+            set {_a} to "zombie"
+        else:
+            set {_a} to arg-7
+        send "%{_a}%"
+        add "{""BlockEntityTag"":{""id"":""MobSpawner"",""SpawnCount"":%arg-2%s,""SpawnRange"":%arg-3%s,""MinSpawnDelay"":%arg-4%,""MaxSpawnDelay"":%arg-5%s" to {_g::*}
+        add """RequiredPlayerRange"":%arg-6%s,""SpawnPotentials"":[{""Weight"":1,""Entity"":{""CustomName"":""%arg-1%"",""Silent"":1b,""NoAI"":1b,""id"":""%{_a}%""}}]}}" to {_g::*}
+        set {_str} to join {_g::*} with ","
+        send {_str}
+        give player spawner named "&c%arg-1% のスポナー" with nbt {_str}

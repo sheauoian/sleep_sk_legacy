@@ -1,0 +1,255 @@
+load:   
+    create gui "shop" with virtual chest with 2 rows named "&8« &lショップ一覧 &8»":
+        make gui slot (integers from 0 to 17) with gray stained glass pane named "&7"
+        # ショートカットキー
+        make gui slot 2 with chest named "&f» アイテム":
+            skShop(player, "shop")
+        make gui slot 6 with dispenser named "&f» ユーティリティ":
+            execute player command "/utility"
+        make gui slot 9 with diamond named "&f» クリスタル購入" with lore "&6RealmsCoin &7を支払って &bクリスタル &7を購入します。":
+            execute player command "/realm"
+command /shop:
+    trigger:
+        open gui "shop" to player
+command /skshop [<text>] [<text>]:
+    permission: sk.item
+    trigger:
+        set {_p} to player
+        set {_} to arg-1
+        set {_id} to arg-2
+        if {_} is "c", "create", "s" or "setting":
+            {_id} is set
+            shopSetting({_p}, {_id})
+tab complete of "/skshop":
+    set tab completions for position 1 to "create", "setting"
+command /openshop <text> <player> [<text>]:
+    permission: sk.item
+    trigger:
+        arg-3 is set:
+            skShop(arg-2, arg-1, arg-3)
+        else:
+            skShop(arg-2, arg-1)
+options:
+    shop: "« &lショップ &8»"
+function skShop(p: player, id: text, arg: text = ""):
+    if gui "skshop.%{_id}%" exists:
+        {_arg} is ""
+        open gui "skshop.%{_id}%" to {_p}
+        stop
+    if {_arg} contains "check":
+        set {_a::*} to {_arg} parsed as "check %integer% %text%"
+        set {_} to {_a::1}
+        set {_g} to "skshop.%{_id}%.check_%{_}%"
+        if gui {_g} exists:
+            {_a::2} is not "reset"
+            open gui {_g} to {_p}
+            stop
+        create gui {_g} with dropper inventory named "« &l購入 &8»":
+
+            make gui slot (integers from 0 to 8) with gray stained glass pane named "&7"
+            set {_I} to {SkSh::%{_id}%::%{_}%}
+            make gui slot 4 with {_I} with lore {Sksh::%{_id}%::%{_}%::Lore::*}:
+                set {_u} to player's uuid
+                set {_m} to {Sksh::%{_id}%::%{_}%::Money}
+                set {_mtype} to {Sksh::%{_id}%::%{_}%::MoneyType}
+                loop {Sksh::%{_id}%::%{_}%::Needs::*}:
+                    player doesn't have loop-value
+                    send "&7必要アイテムが不足しています"
+                    stop
+                {P::%{_u}%::%{Money::%{_mtype}%}%} < {_m}:
+                    send "t %{Money::%{_mtype}%::Name}% %{_mtype}% %{_m}%"
+                    send "%{Money::%{_mtype}%::Name}% &7が不足しています"
+                    stop
+                if line 1 of lore of {SkSh::%{_id}%::%{_}%} contains ";SAMPLEITEM":
+                    set {_Wp::*} to split uncolored (line 1 of lore of {SkSh::%{_id}%::%{_}%}) at ";"
+                    set {_give} to generateWeapon({_Wp::1})
+                    add "&8%{_p}%" to {_give}'s lore 
+                    {WType::%{Weapon::%{_Wp::1}%::Type}%::Type} is "weapon":
+                        addArsenal({_p}, {_give}, "weapon") is false:
+                            stop
+                    else:
+                        addArsenal({_p}, {_give}, {Weapon::%{_Wp::1}%::Type}) is false:
+                            stop
+                    send "&f武器庫にアイテムを追加しました"
+                else:
+                    player doesn't have enough space for {SkSh::%{_id}%::%{_}%}:
+                        stop
+                    give player {SkSh::%{_id}%::%{_}%}
+
+                remove {Sksh::%{_id}%::%{_}%::Needs::*} from player's inventory
+                remove {_m} from {P::%{_u}%::%{Money::%{_mtype}%}%}
+                
+                sidebar(player)
+                skShop(player, {_id})
+                Sound2(player, "entity.player.levelup", 2)
+            make gui slot 6 with barrier with lore "&c前の画面に戻る":
+                skShop(player, {_id})
+        open last created gui to {_p}
+        stop
+    create gui "skshop.%{_id}%" with virtual chest with 6 rows named {@shop}:
+        make gui slot (integers from 0 to 53) with gray stained glass pane named "&7"
+        {_id} is "shop":
+            make gui slot 49 with barrier named "&cメインメニューに戻る":
+                open gui "main" to player
+            make gui slot 52 with dispenser named "&f» ユーティリティ":
+                execute player command "/utility"
+        set {_S} to 10
+        loop 28 times:
+            add 1 to {_}
+            {SkSh::%{_id}%::%{_}%} is set:
+                {SkSh::%{_id}%::%{_}%} is not air
+                add 1 to {_amount}
+                set {_I} to {SkSh::%{_id}%::%{_}%}
+                make gui slot {_S} with {_I} with lore {Sksh::%{_id}%::%{_}%::Lore::*}:
+                    if click type is drop key:
+                        skShop(player, {_id}, "check %{_}% reset")
+                    else:
+                        skShop(player, {_id}, "check %{_}% no")
+            {_amount} >= amount of {SkSh::%{_id}%::*}:
+                exit a loop
+            add 1 to {_S}
+            mod({_S}, 9) = 8
+            add 2 to {_S}
+    open last created gui to {_p}
+command /gomi:
+    trigger:
+        open chest with 4 rows named "ごみs" to player
+options:
+    setting: "« &lショップの詳細設定 &8»"
+
+function shopSetting(p: player, id: text, arg: text = ""):
+    set {_u} to {_p}'s uuid
+    if {_arg} is "":
+        set {ShopMake::%{_u}%} to {_id}
+        set {ShopMake::%{_u}%::N} to 0
+        create gui with virtual chest with 6 rows named "« &lショップの設定 &8»":
+            set {_S} to 10
+            loop 28 times:
+                add 1 to {_}
+                if {Sksh::%{_id}%::%{_}%} is not set:
+                    set {_I} to gray stained glass pane
+                else if {Sksh::%{_id}%::%{_}%} is not air:
+                    set {_I} to {Sksh::%{_id}%::%{_}%}
+                else:
+                    set {_I} to gray stained glass pane
+                make gui slot {_S} with {_I}:
+                    shopSetting({_p}, {_id}, ";edit %{_}%")
+                add 1 to {_S}
+                mod({_S}, 9) = 8
+                add 2 to {_S}
+        open last created gui to {_p}
+    else if {_arg} contains ";edit":
+        set {_arg::*} to {_arg} parsed as ";edit %integer%"
+        set {_} to {_arg::1}
+        create gui with virtual chest with 1 rows named {@setting}:
+            make gui slot 0 with {Sksh::%{_id}%::%{_}%}:
+                delete {Sksh::%{_id}%::%{_}%}
+                shopSetting({_p}, {_id}, ";edit %{_}%")
+            {Sksh::%{_id}%::%{_}%::MoneyType} is not set:
+                set {Sksh::%{_id}%::%{_}%::MoneyType} to 1
+                set {Sksh::%{_id}%::%{_}%::Money} to 0
+            set {_mtype} to {Sksh::%{_id}%::%{_}%::MoneyType}
+            set {_I} to {Money::%{_mtype}%::Icon} named "&f支払い方法: %{Money::%{_mtype}%::Name}%"
+            set {_l::*} to "&7Qｷｰ→ 値段変更 (現在 %{Sksh::%{_id}%::%{_}%::Money}%)" and "&7クリック→ 支払い方法変更"
+            make gui slot 1 with {_I} with lore {_l::*}:
+                if click type is drop key:
+                    set metadata "skshop_setmoney" of {_p} to "%{_id}% %{_}%"
+                    close {_p}'s inventory
+                    send "値段をいえいえいえいえいえいえーchatで" to {_p}
+                    stop
+                set {Sksh::%{_id}%::%{_}%::MoneyType} to mod({Sksh::%{_id}%::%{_}%::MoneyType} + 1, 3)
+                shopSetting({_p}, {_id}, ";edit %{_}%")
+            make gui slot 4 with chest named "&f必要素材を変更" with lore {Sksh::%{_id}%::%{_}%::Lore::*}:
+                shopSetting({_p}, {_id}, ";needs %{_}%")
+            make gui slot 8 with max(1, {_}) of gray stained glass pane named "&fスロットを変更する" with lore "&7%{_id}% %{_}%":
+                shopSetting({_p}, {_id}, ";slotchange %{_}%")
+        open last created gui to {_p}
+    else if {_arg} contains ";slotchange":
+        set {_arg::*} to {_arg} parsed as ";slotchange %integer%"
+        set {_old} to {_arg::1}
+        create gui with virtual chest with 6 rows named "« &lスロットの変更 &8»":
+            set {_S} to 10
+            loop 28 times:
+                add 1 to {_new}
+                make gui slot {_S} with gray stained glass pane:
+                    set {_need::*} to {Sksh::%{_id}%::%{_new}%::Need::*}
+                    set {Sksh::%{_id}%::%{_new}%::Need::*} to {Sksh::%{_id}%::%{_old}%::Need::*}
+                    set {Sksh::%{_id}%::%{_old}%::Need::*} to {_need::*}
+
+                    set {_Lore::*} to {Sksh::%{_id}%::%{_new}%::Lore::*}
+                    set {Sksh::%{_id}%::%{_new}%::Lore::*} to {Sksh::%{_id}%::%{_old}%::Lore::*}
+                    set {Sksh::%{_id}%::%{_old}%::Lore::*} to {_Lore::*}
+
+                    set {_temp::*} to {Sksh::%{_id}%::%{_new}%::*}
+                    set {Sksh::%{_id}%::%{_new}%::*} to {Sksh::%{_id}%::%{_old}%::*}
+                    set {Sksh::%{_id}%::%{_old}%::*} to {_temp::*}
+
+                    set {_temp} to {Sksh::%{_id}%::%{_new}%}
+                    set {Sksh::%{_id}%::%{_new}%} to {Sksh::%{_id}%::%{_old}%}
+                    set {Sksh::%{_id}%::%{_old}%} to {_temp}
+
+                    shopSetting({_p}, {_id}, ";edit %{_new}%")
+                add 1 to {_S}
+                mod({_S}, 9) = 8
+                add 2 to {_S}
+        open last created gui to {_p}    
+    else if {_arg} contain ";needs":
+        set {_arg::*} to {_arg} parsed as ";needs %integer%"
+        set {_} to {_arg::1}
+        open chest with 2 rows named "必要アイテムを設定してください" to {_p}
+        loop {Sksh::%{_id}%::%{_}%::Needs::*}:
+            add 1 to {_s}
+            set slot ({_s}-1) of {_p}'s current inventory to loop-value
+        delete {Sksh::%{_id}%::%{_}%::Needs::*}
+        while name of {_p}'s current inventory is "必要アイテムを設定してください":
+            {_i::*} is set:
+                delete {_i::*}
+            set {_i::*} to all items in {_p}'s current inventory
+            wait 4 ticks
+        set {Sksh::%{_id}%::%{_}%::Needs::*} to {_i::*}
+
+        # Lore変更
+        set {_l::*} to lore of {Sksh::%{_id}%::%{_}%}
+        set {_s} to amount of {_l::*} + 1
+        set {_l::%{_s}%} to "&7&m   &7« &3&l交換素材 &7»&m       &7"
+        add 2 to {_s}
+        if {Sksh::%{_id}%::%{_}%::Money} > 0:
+            set {_l::%{_s}%} to ""
+            set {_mtype} to {Sksh::%{_id}%::%{_}%::MoneyType}
+            set {_l::%{_s}%} to "&7 - &f%{Sksh::%{_id}%::%{_}%::Money}% %{Money::%{_mtype}%::Name}%"
+            add 1 to {_s}
+        loop {Sksh::%{_id}%::%{_}%::Needs::*}:
+            delete {_name::*}
+            set {_name::*} to split "%loop-value%" at "named "
+            set {_name::*} to split {_name::2} at " with"
+            set {_of::*} to split "%loop-value%" at " "
+            set {_am} to ({_of::1} parsed as a int) ? 1
+            set {_l::%{_s}%} to "&7 - %{_name::1}% x%{_am}%"
+            add 1 to {_s}
+        set {_l::%{_s}%} to "&7&m                         &7"
+
+        set {Sksh::%{_id}%::%{_}%::Lore::*} to {_l::*}
+
+        send "ほぞんしたよ" to {_p}
+inventory click:
+    player is op
+    name of player's current inventory contains {@setting}
+    "%click type%" contains "drop"
+    cancel event
+    clicked inventory is player's inventory
+    set {_i} to event-slot
+    {_i} is not air
+    set {_line} to uncolored line 1 of lore of slot 8 of player's current inventory
+    set {_slot::*} to {_line} parsed as "%text% %number%"
+    set {_id} to {_slot::1}
+    set {_} to {_slot::2}
+    set {Sksh::%{_id}%::%{_}%} to {_i}
+    Sound2(player, "block.lever.click")
+    shopSetting(player, {_id}, ";edit %{_}%")
+chat:
+    metadata "skshop_setmoney" of player is set
+    cancel event
+    set {_i::*} to metadata "skshop_setmoney" of player parsed as "%text% %integer%"
+    set {Sksh::%{_i::1}%::%{_i::2}%::Money} to message parsed as a int
+    delete metadata "skshop_setmoney" of player
+    shopSetting(player, {_i::1}, ";edit %{_i::2}%")

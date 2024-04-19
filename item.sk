@@ -1,0 +1,155 @@
+command /rename <text>:
+    permission: sk.item
+    trigger:
+        set {_name} to colored arg
+        set name of player's tool to {_name}
+        send "アイテム名を %{_name}% &fに変更しました"
+command /relore <int> <text>:
+    permission: sk.item
+    trigger:
+        set {_lore} to colored arg-2
+        set line arg-1 of lore of player's tool to {_lore}
+        send "説明文の %arg-1%行目を %{_lore}% &fに変更しました%nl%Full:"
+        loop lore of player's tool:
+            send "&5 &o%loop-value%"
+command /dye <int> <int> <int>:
+    permission: sk.item
+    trigger:
+        dye player's tool rgb(arg-1, arg-2, arg-3)
+command /hideflag:
+    permission: sk.item
+    trigger:
+        give player player's tool with all flags hidden
+command /addnbt <text>:
+    permission: sk.item
+    trigger:
+        add nbt of arg to nbt of player's tool
+command /gettag <text>:
+    permission: sk.item
+    trigger:
+        set {_} to tag arg of nbt of player's tool
+        send "%{_}%"
+command /skgive <player> <text> <int>:
+    permission: op
+    trigger:
+        Sound2(arg-1, "entity.item.pickup")
+        give arg-1 arg-3 of {SkItem::%arg-2%}
+command /skitem [<text>] [<text>] [<text>]:
+    aliases: i
+    permission: sk.item
+    trigger:
+        set {_id::*} to split arg-2 at ";"
+        set {_id} to {_id::1}
+
+        set {_i} to player's tool
+
+        if arg-1 is not set:
+            send nbt of player's tool
+        
+        else if arg-1 is "set":
+            if {_id::2} is set:
+                set {SkItem::%{_id}%::%{_id::2}%} to {_i}
+            else:
+                set {SkItem::%{_id}%} to {_i}
+        
+        else if arg-1 is "setlist" or "sl":
+            open chest with 2 rows named "ItemList [%{_id}%]" to player
+            set {_} to 0
+            loop {SkItem::%{_id}%::*}:
+                set slot {_} of player's current inventory to loop-value
+                add 1 to {_}
+            wait a tick
+            while name of player's current inventory contains "ItemList":
+                set {_items::*} to all items in player's current inventory
+                wait 5 ticks
+            set {SkItem::%{_id}%::*} to {_items::*}
+            send "設定されました!"
+            stop
+        
+        else if arg-1 is "add":
+            add player's tool to {SkItem::%{_id}%::*}
+        else if arg-1 is "remove":
+            if {_id::2} is set:
+                delete {SkItem::%{_id}%::%{_id::2}%}
+            else:
+                delete {SkItem::%{_id}%}
+        
+        else if arg-1 is "get":
+            if arg-3 contains "forbid":
+                set {_i} to stone hoe named "&7???" with lore "&9&l解放可能"
+                set {_com} to nbt compound of {_i}
+                set tag "tag;%arg-3%" of {_com} to {_id}
+                give player item from nbt {_com}
+            give player {SkItem::%{_id}%}
+        else if arg-1 is "list":
+            if {_id} is set:
+                loop {SkItem::%{_id}%::*}:
+                    send "%loop-index%: %loop-value%"
+            else:
+                loop {SkItem::*}:
+                    send "%loop-index%: %loop-value%"
+        else if arg-1 is "tag":
+            set {_i} to player's tool
+            add nbt of "{%arg-2%:%arg-3%}" to nbt of {_i}
+            give player {_i}
+            
+        else if arg-1 is "dmg":
+            set player's tool to player's tool damaged by arg-2 parsed as a int
+tab complete of "/skitem":
+    set tab completions for position 1 to "cast", "set", "setlist", "sl", "get", "list", "tag" and "dmg"
+    if tab arg-1 = "get":
+        loop {SkItem::*}:
+            add loop-index to {_a::*}
+        {_a::*} is set
+        set tab completions for position 2 to {_a::*}
+command /mitem [<text>] [<text>] [<text>]:
+    permission: op
+    trigger:
+        set {_} to arg-1
+        set {_ID} to arg-2
+        if {_} is "register":
+            set {Material::%{_id}%} to player's tool with nbt nbt of "{}"
+        if {_} is "name":
+            set {Material::%{_id}%::Name} to arg-3
+        if {_} is "type":
+            set {Material::%{_id}%::Type} to arg-3
+        if {_} is "sell":
+            set {_Sell::*} to split arg-3 at ","
+            {_Sell::2} is not set:
+                send "Usage: /mitem sell <ID> <売値>,<お金タイプ>"
+                stop
+            set {Material::%{_id}%::Sell} to {_Sell::1} parsed as a int
+            set {Material::%{_id}%::SellType} to {_Sell::2} parsed as a int
+        if {_} is "get":
+            set {_Lv} to arg-3 parsed as a int ? 0
+            loop 16 times:
+                give player getMaterialItem(player, {_ID}, {_Lv})
+tab complete of "/mitem":
+    set tab completions for position 1 to "register", "name", "type", "sell" and "get"
+    if tab arg-1 = "name", "type", "sell" or "get":
+        loop {Material::*}:
+            add loop-index to {_a::*}
+        {_a::*} is set
+        set tab completions for position 2 to {_a::*}
+
+
+load:
+    set {MaterialColor::*} to "&7", "&a", "&b", "&9", "&5" and "&6"
+function getMaterialItem(p: player, id: text, lv: int = 0) :: item:
+    set {_U} to {_p}'s uuid
+    set {_L::*} to 20000, 1000, 200, 100, 30 and 1
+    set {_Un} to max(1, (20000/50)*{PBuy::%{_u}%::drop})
+    set {_Av} to sum({_L::*})
+    set {_R} to random integer between {_Un} to {_Av}
+    #send "%{_Un}%- %{_R}% -%{_Av}%" to {_p}
+    if {_Lv} is 0:
+        set {_Lv} to 1
+        loop {_L::*}:
+            add loop-value to {_}
+            {_R} <= {_}:
+                exit a loop
+            {_Lv} >= 6:
+                exit a loop
+            add 1 to {_Lv}
+    set {_I} to {Material::%{_id}%} with nbt nbt of "{itemscore:%{_Lv}%,material:%{_id}%}" named "%{MscoreP::%{_Lv}%}% %{MaterialColor::%{_Lv}%}%%{Material::%{_id}%::Name}%" with lore "&8素材"
+    return setSell({_I}, {Material::%{_id}%::Sell}*{_Lv}^2, {Material::%{_id}%::SellType})

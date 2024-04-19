@@ -1,0 +1,25 @@
+right click:
+    "%lore of player's tool%" contains "法器"
+    {Catalyst::%player%} is not set
+    set {Catalyst::%player%} to 1
+    set {_v} to vector from yaw player's yaw and pitch player's pitch
+    set standard length of {_v} to 2
+    set {_l} to (player's location ~ v(0, 1, 0)) ~ {\v}
+    set standard length of {_v} to 1.5
+    Sound1({_l}, "entity.witch.throw", 1, 0.5)
+    loop 5 times:
+        #morkazsk activate 3 of particle "END_ROD":0 offset by 0.1, 0.1, 0.1 at {_l}
+        make 3 of end_rod at location of player
+        loop all entities in radius 2 around {_l}:
+            loop-entity is not a player
+            magicDamage(player, loop-entity)
+            set {_skip} to 1
+        {_skip} is 1:
+            exit a loop
+        set {_l} to {_l} ~ {_v}
+    wait 10 ticks
+    delete {Catalyst::%player%}
+quit:
+    delete {Catalyst::%player%}
+load:
+    delete {Catalyst::*}

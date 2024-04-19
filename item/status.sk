@@ -1,0 +1,113 @@
+# defineStatus(番号, ID, 名称, 記号, 色, レアリティ, パーセント設定(0→ 整数値 1→ パーセント 2→ 両方),
+#   デフォルト値, ステータスタイプ(mining, battle), 実装方法(normal, enchantment, attribute), その他)
+# その他:
+#   enchantment → Enchantment ( https://skripthub.net/docs/?id=2143 )
+#   attibute → Attribute Type ( https://skripthub.net/docs/?id=4280 )
+#
+# 例:
+#   defineStatus(11, ("crit_rate", "会心率", "ᐍ", "&c", 1, 1, 0, "battle", "normal"))
+
+load:
+    # 攻撃
+    defineStatus(11, ("crit_rate", "会心率", "ᐍ", "&c", 1, 1, 0))
+    defineStatus(12, ("crit_damage", "会心ダメージ", "ᐎ", "&c", 1, 1, 1.5))
+    defineStatus(13, ("mana_efficient", "マナ効率", "ᗹ", "&5", 2, 1, 0))
+    defineStatus(14, ("cooldown_shorten", "スキルクールダウン短縮", "⌛", "&b", 2, 1, 0))
+    defineStatus(15, ("rate_damage", "比率ダメージバフ", "༖", "&6", 3, 1, 0))
+    defineStatus(16, ("physic_attack", "物理攻撃力", "⚔", "&f", 1, 2, 5))
+    defineStatus(17, ("magic_attack", "魔法攻撃力", "❖", "&f", 1, 2, 5))
+    # 防御
+    defineStatus(21, ("def", "防御", "ᗜ", "&7", 1, 2, 1, "battle", "normal"))
+    defineStatus(22, ("hp", "体力", "♥", "&d", 1, 2, 10, "battle", "normal"))
+    defineStatus(24, ("physic_buffer", "物理緩衝", "ந", "&6", 3, 1, 0, "battle", "normal"))
+    defineStatus(25, ("magic_buffer", "魔法緩衝", "த", "&6", 3, 1, 0, "battle", "normal"))
+
+function defineStatus(n: int, d: objects):
+    set {Stat::%{_n}%} to {_d::1}
+    set {Stat::%{_n}%::Name} to {_d::2}
+    set {Stat::%{_n}%::Symbol} to {_d::3}
+    set {Stat::%{_n}%::Color} to {_d::4}
+    set {Stat::%{_n}%::Rarity} to {_d::5}
+    set {Stat::%{_n}%::Percent} to {_d::6} ? 0
+    set {Stat::%{_n}%::Default} to {_d::7} ? 0
+    set {Stat::%{_n}%::Type} to {_d::8} ? "battle"
+    set {Stat::%{_n}%::Implement} to {_d::9} ? "normal"
+    set {Stat::%{_n}%::Option} to {_d::10} ? ""
+    set {_name} to uncolored {_d::2}
+    set {StatsNum::%{_name}%} to {_n}
+
+# デフォルトステータスの更新
+function updatePlayerStatus(p: player):
+    set {_u} to {_p}'s uuid
+    set {_} to 36
+    #
+    # 武器・防具
+    #
+    loop {Pw::%{_u}%::*}:
+        set {_i} to loop-value
+        set {_l::*} to lore of {_i}
+        set {_temp::*} to split uncolored {_l::1} at ";"
+        set {_id} to {_temp::1}
+
+        # 基礎攻撃力
+        if {WType::%{Weapon::%{_id}%::Type}%::Type} is "weapon":
+            set {_lvl} to getWeaponLevel({_i})
+            set {_Power} to ceil(({Weapon::%{_id}%::Power} * ({_lvl} + 1))/2)
+            add {_Power} to {_int::16}
+            add {_Power} to {_int::17}
+
+        delete {_l::1}
+        # Loreをループする
+        loop {_l::*}:
+            set {_l} to uncolored loop-value-2
+            set {_base::*} to {_l} parsed as "%text% %text% %number%"
+            {StatsNum::%{_base::2}%} is set
+            set {_n} to {StatsNum::%{_base::2}%}
+            {_l} contains "%%":
+                add {_base::3} to {_percent::%{_n}%}
+            else:
+                add {_base::3} to {_int::%{_n}%}
+    #
+    # デフォルトステータスに反映
+    #
+    delete {PStat::%{_u}%::*}
+    loop {Stat::*}:
+        set {_n} to loop-index
+        if {Stat::%{_n}%::Percent} is 1:
+            set {_int} to {Stat::%{_n}%::Default} + {_percent::%{_n}%}
+            set {_percent} to 1
+        else:
+            set {_int} to {Stat::%{_n}%::Default} + {_int::%{_n}%}
+            set {_percent} to 1 + {_percent::%{_n}%}
+        set {PStat::%{_u}%::%loop-value%} to {_int} * {_percent}
+        setStatus({_p}, "%loop-value%", {PStat::%{_u}%::%loop-value%})
+    Sound2({_p}, "block.note_block.xylophone")
+    loop all items in {_p}:
+        tag "soulbound" of nbt of loop-value is set
+        remove loop-value from {_p}
+        wait a tick
+    if {Pw::%{_u}%::weapon} is set:
+        set {_i} to {Pw::%{_u}%::weapon}
+        add nbt of "{soulbound:1}" to nbt of {_i}
+        give {_p} {_i}
+    loop "weapon", "helmet", "chestplate", "leggings" and "boots":
+        setStatus({_p}, "equipment.%loop-value%", ({Pw::%{_u}%::%loop-value%} ? air))
+drop:
+    cancel event
+command /updatePlayerStatus <player>:
+    permission: op
+    trigger:
+        set {_p} to arg ? player
+        updatePlayerStatus({_p})
+
+command /status [<text>]:
+    trigger:
+        set {_u} to player's uuid
+        loop {Stat::*}:
+            set {_n} to loop-index
+            set {_name} to "%{Stat::%{_n}%::Color}%%{Stat::%{_n}%::Symbol}% %{Stat::%{_n}%::Name}%"
+            set {_value} to {PStat::%{_u}%::%{Stat::%{_n}%}%}
+            if {Stat::%{_n}%::Percent} is 1:
+                send "%{_name}%&f %{_value}*100%%%"
+            else:
+                send "%{_name}%&f %{_value}%"

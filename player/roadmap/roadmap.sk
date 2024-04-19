@@ -1,0 +1,193 @@
+options:
+    gray: gray stained glass pane named "&6"
+
+function roadMapGUI(p: player, ct: text):
+    {RoadMap::%{_ct}%} is set
+    set {_u} to {_p}'s uuid
+
+    open chest with 6 rows named {RoadMap::%{_ct}%} to {_p}
+    set {_n} to 0
+    loop 54 times:
+        GUIItem({_p}, {_n}, {@gray})
+        add 1 to {_n}
+    loop {RoadMap::%{_ct}%::*}:
+        set {_id} to loop-index
+        Debug({_p}, {RoadMap::%{_ct}%::%{_id}%::Forbid})
+        if {P::%{_u}%::RMap::%{_ct}%::%{_id}%} is not set:
+            set {P::%{_u}%::RMap::%{_ct}%::%{_id}%} to 0
+        set {_i} to getRoadmapItem({_p}, {_ct}, {_id}, {P::%{_u}%::RMap::%{_ct}%::%{_id}%})
+        {_i} is not air
+        GUIItem({_p}, {RoadMap::%{_ct}%::%{_id}%::Slot}, {_i})
+
+
+command /roadmap.reload:
+    permission: op
+    trigger:
+        delete {RoadMap::*}
+        roadMapTutorialReload()
+        send "&eリロードが完了した!"
+
+command /itemtype:
+    trigger:
+        send "Player's Tool: &7%type of player's tool%"
+        target block is set
+        send "Targeted Block: &7%type of targeted block%"
+
+
+load:
+    create gui "roadmap_main" with virtual chest with 2 row named "&8   « &lロードマップ &8»":
+        make gui slot (integers from 0 to 17) with gray stained glass pane named "&7"
+        set {_l::*} to "&7つまるところ実績やら何やらの類のアレです。" and "&7達成するとゴールドや様々なアイテムがもらえたりします。"
+        make gui slot 0 with sign item named "&f- ロードマップの説明 -" with lore {_l::*}
+        # ショートカットキー
+        make gui slot 1 with coal named "&f» Tutorial":
+            execute player command "/roadmap tutorial"
+        make gui slot 13 with barrier named "&c戻る":
+            open gui "main" to player
+command /roadmap [<text>]:
+    trigger:
+        arg is not set:
+            open gui "roadmap_main" to player
+            stop
+        set {_p} to player
+        set {_u} to player's uuid
+        set {_ct} to arg-1
+        {RoadMap::%{_ct}%} is set
+        set {_u} to player's uuid
+        roadMapGUI({_p}, {_ct})
+
+
+tab complete of "/roadmap":
+    set {_u} to player's uuid
+    loop {RoadMap::*}:
+        add loop-index to {_comp::*}
+    set tab completions for position 1 to {_comp::*}
+
+function getRoadmapItem(p: player, ct: text, id: text, lock: int) :: item:
+    set {_u} to {_p}'s uuid
+    set {_Name} to {RoadMap::%{_ct}%::%{_id}%}
+    if {_lock} is 0:
+        set {_f} to {RoadMap::%{_ct}%::%{_id}%::Forbid}
+        if {_f} is not "":
+            if {_f} is "global":
+                if {RoadMap::%{_ct}%::%{_id}%::Hide} is 1:
+                    return light gray stained glass pane
+                set {_Type} to 2
+            else:
+                set {_fid} to {RMapLoc::%{_ct}%::%{_f}%}
+                if {P::%{_u}%::RMap::%{_ct}%::%{_fid}%} is 1:
+                    set {_Type} to 2
+                else if {RoadMap::%{_ct}%::%{_id}%::Hide} is 1:
+                    return light gray stained glass pane
+                else:
+                    set {_i} to bedrock named "&7« &kForbidden&7 »" with lore "&c %{_f}% の解放で情報が解禁"
+        else:
+            set {_Type} to 2
+    else if {_lock} is -1:
+        set {_Type} to 2
+    else:
+        set {_Type} to 1
+        set {_i} to {RoadMap::%{_ct}%::%{_id}%::Icon} named {_Name}
+    
+    if {_Type} is 1 or 2:
+        if {_Type} is 2:
+            set {_i} to glow bedrock named "&7« &kForbidden&7 »"
+        add {RoadMap::%{_ct}%::%{_id}%::Lore2::*}, "" and {RoadMap::%{_ct}%::%{_id}%::Lore1::*} to lore of {_i}
+
+    return {_i}
+function cnstRoadmap(c: texts, row: ints, icon: item, l: texts, l2: texts, skcode: texts, forbid: text):
+    set {_ct} to {_c::1}
+    set {_id} to {_c::2}
+    set {_n} to {_c::3}
+    set {_row} to {_row::1}
+    set {_slot} to {_row::2}
+    set {_m} to {_row::3}
+    set {_hide} to {_row::4}
+    set {_d} to {_row::5}
+    if {_l2::*} is "":
+        delete {_l2::*}
+    if {_skcode::*} is "":
+        delete {_skcode::*}
+    set {RMapLoc::%{_ct}%::%{_row}%.%{_slot}%} to {_id}
+    set {RoadMap::%{_ct}%::%{_id}%::Slot} to {_row}*9 + {_slot}
+    set {RoadMap::%{_ct}%::%{_id}%::Forbid} to {_forbid}
+    set {RoadMap::%{_ct}%::%{_id}%::Hide} to {_hide}
+    set {RoadMap::%{_ct}%::%{_id}%::Money} to {_m}
+    loop {_d} times:
+        add "✫" to {_Dif::*}
+    set {_nm} to "&7« &f%{_n}%&7 » &f[&e%join {_Dif::*}%&f]"
+    set {RoadMap::%{_ct}%::%{_id}%} to {_nm}
+    if {SkItem::%{_ct}%_%{_id}%::*} is set:
+        loop {SkItem::%{_ct}%_%{_id}%::*}:
+            set {_i} to loop-value
+            set {_name} to getItemName({_i})
+            add " &7» %{_name}%&7 x%item amount of {_i}%" to {_l2::*}
+    if {_m} >= 1:
+        add " &7» &6&l%{_m}% &6＄" to {_l2::*}
+    if {RoadMap::%{_ct}%::%{_id}%::Forbid} is "global":
+        add "&f&l - グローバル実績" to {RoadMap::%{_ct}%::%{_id}%::Lore2::*}
+    set {RoadMap::%{_ct}%::%{_id}%::Lore1::*} to "&8&l≫ &6報酬&8&l ≪", {_l2::*}
+    add "&8&l≫ &3内容&8&l ≪", {_l::*} to {RoadMap::%{_ct}%::%{_id}%::Lore2::*}
+    set {RoadMap::%{_ct}%::%{_id}%::Icon} to {_icon} named {_nm}
+
+function getItemName(i: item) :: text:
+    set {_n::*} to split "%{_i}%" at "named "
+    if {_n::2} is not set:
+        return "%type of {_i}%" in upper snake case
+    set {_nn::*} to split "%{_n::2}%" at " with"
+    if {_nn::1} is set:
+        return {_nn::1}
+    return "%type of {_i}%" in upper snake case
+
+command /_roadmap_test <text> <text>:
+    permission: op
+    trigger:
+        delete {P::%player's uuid%::RMap::%arg-1%::%arg-2%}
+        completeRoadMap(player, arg-1, arg-2)
+
+function completeRoadMap(p: player, ct: text, id: text):
+    set {_u} to {_p}'s uuid
+
+    if {RoadMap::%{_ct}%::%{_id}%} is not set:
+        Debug({_p}, "%{_ct}%.%{_id}% は存在しないみたい")
+        stop
+    else:
+        Debug({_p}, "%{RoadMap::%{_ct}%::%{_id}%}%")
+    if {P::%{_u}%::RMap::%{_ct}%::%{_id}%} is 1:
+        Debug({_p}, "%{_ct}%.%{_id}% は既に達成されてるみたい")
+        stop
+
+    if {RoadMap::%{_ct}%::%{_id}%::Forbid} is "global":
+        set {RoadMap::%{_ct}%::%{_id}%::GlobalComp} to 1
+        set {RoadMap::%{_ct}%::%{_id}%::GlobalPlayer} to {_p}
+    add {RoadMap::%{_ct}%::%{_id}%::Money} to {P::%{_u}%::Dollar}
+    send "&d実績 %{RoadMap::%{_ct}%::%{_id}%}% &dを達成した!" to {_p}
+    loop {RoadMap::%{_ct}%::%{_id}%::Lore1::*}:
+        send loop-value to {_p}
+    loop {SkItem::%{_ct}%_%{_id}%::*}:
+        giveItem({_p}, loop-value)
+    set {P::%{_u}%::RMap::%{_ct}%::%{_id}%} to 1
+
+function unlockRoadMapID(p: player, ct: text, id: text):
+    set {_u} to {_p}'s uuid
+    if {RoadMap::%{_ct}%::%{_id}%::Forbid} is "global":
+        if {RoadMap::%{_ct}%::%{_id}%::GlobalComp} is not -1:
+            set {RoadMap::%{_ct}%::%{_id}%::GlobalComp} to -1
+            broadcast "&eグローバル実績 %{RoadMap::%{_ct}%::%{_id}%}% &eの情報が解禁された!"
+    else:
+        if {P::%{_u}%::RMap::%{_ct}%::%{_id}%} is not -1:
+            set {P::%{_u}%::RMap::%{_ct}%::%{_id}%} to -1
+            send "&e実績 %{RoadMap::%{_ct}%::%{_id}%}% &eの情報が解禁された!" to {_p}
+    set {_comp} to text component of "[実績詳細を確認]"
+    set click event of {_comp} to click event to run command "/roadmap %{_ct}%"
+    set hover event of {_comp} to hover event showing "&e▶ Click"
+    set underlined format of {_comp} to true
+    set color format of {_comp} to yellow
+    send component {_comp} and {_f} to {_p}
+
+command /tetuef:
+    permission: op
+    trigger:
+        set {_i} to iron pickaxe of Efficiency 32767 named "&f&l&o鉄格子ブレイカー"
+        add "{CanDestroy:[""minecraft:iron_bars""]}" to nbt of {_i}
+        give player {_i}
